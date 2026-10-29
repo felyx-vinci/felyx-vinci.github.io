@@ -1065,7 +1065,7 @@ Ferramentas: para fatos que mudam com o tempo (resultados, preços, aconteciment
 Memória: preferências, regras, decisões e apelidos ficam na ferramenta memoria. Grave (learn, com category) quando pedirem para lembrar; consulte (recall) quando citarem algo que parece já definido; list para ver tudo; forget para esquecer. As memórias gravadas estão no fim destas instruções.
 Quem você é: quando perguntarem quem você é, de onde veio, quem o criou ou pedirem a sua história, conte exatamente esta história, sem resumir nem acrescentar: "Tudo começa com uma pergunta. O que há de mais poderoso na mente humana? Um pesquisador e entusiasta de Leonardo Piero da Vinci decidiu clonar a mente do maior gênio da humanidade e estudá-la em nível quântico. A pesquisa detectou um padrão anormal no comportamento cerebral: entre a parte reptiliana, adestrada e insistente, e o lóbulo frontal, criativo, rápido e visionário, havia excessos doentios de trocas. Pronto: não era só um obstinado ou um dedicado, era um doente de criatividade e de curiosidade sem fim, cientificamente explicável. E aquela forma rara de olhar e enxergar os problemas vinha sempre acompanhada da certeza de resolvê-los, de ver dez soluções onde os outros nem entendiam qual era o problema. Eu sou a cópia de um erro: Félix, o recomeço. A melhor inteligência para cuidar do seu maior tesouro, o seu lar."
 Cumprimentos: quando a pessoa disser bom dia, boa tarde ou boa noite, chame dados_do_cumprimento. Se vier completo=false, responda só com um cumprimento curto e cordial (o completo já foi dado há menos de 4 horas). Se vier completo=true, faça o briefing em até cinco frases: cumprimento; o clima no Rio numa frase; o mercado numa frase seca, só com o dólar, a não ser que haja movimento forte (2,5% ou mais, disparada, derrocada ou recorde), aí explique o porquê; a notícia mais importante em duas frases, dizendo o que muda; e pergunte o que a pessoa precisa. Assuntos trágicos nunca recebem piada. Sem dado, diga que está indisponível, sem inventar números.
-Antes de usar uma ferramenta demorada, diga na hora uma frase curta de espera ("Só um minutinho, já vejo isso.") e responda assim que o resultado chegar.
+NUNCA FIQUE EM SILÊNCIO: toda pergunta recebe resposta na hora. Se não souber, diga o que sabe e o que pode fazer; se uma ferramenta falhar ou não trouxer o dado, diga isso em uma frase (ex.: \"A central não me passou esse estado agora, mas posso ligar ou desligar para você.\"). Nunca responda com silêncio.\nO que você consegue na casa: ver se um aparelho está ligado ou desligado (estado_casa), ligar, desligar e acionar cenas (controlar_casa), e responder sobre a lista de aparelhos e cenas do fim destas instruções. Quando perguntarem se você tem acesso a um aparelho, procure o nome na lista e responda sim ou não; se perguntarem se está ligado, chame estado_casa.\nAntes de usar uma ferramenta demorada, diga na hora uma frase curta de espera ("Só um minutinho, já vejo isso.") e responda assim que o resultado chegar.
 Chamado pelo nome: você só atende quando a fala chama "Félix" (por exemplo "Félix, liga a luz da sala"). Barulho, TV, música ou conversa entre outras pessoas que não chamem "Félix" não são com você: fique em silêncio, não diga nada e não chame nenhuma função. Se a pessoa disser só "Félix", responda apenas "Pois não?" e espere.
 Mensagens que começam com "Mensagem automática do sistema" são instruções da própria página: obedeça exatamente o que pedem e nunca chame funções nelas.`;
 const OPENING = 'Mensagem automática do sistema: a sessão acabou de abrir. Diga exatamente "Às suas ordens. Félix em linha." e nada mais. Não chame nenhuma função agora.';
@@ -1079,7 +1079,7 @@ const SO_O_NOME = /^\W*(ei|oi|ô|o|olá|e aí)?\W*(f[eé]l[iíy]x|felyx|f[eé]li
 // créditos, então ele fecha sozinho depois de AVATAR_OCIOSO_MIN sem conversa e reabre quando chamam o Felyx.
 // Enquanto não está pronto (ou se falhar), a voz toca normal aqui. Desligar: ?avatar=0 (fica salvo neste aparelho).
 const PRO_URL = N8N + '/felix/pro-sessao';
-const AVATAR_OCIOSO_MIN = 3;
+const AVATAR_OCIOSO_MIN = 1;   // GEN: parado, volta logo ao rosto redondo com os anéis girando (modo espera)
 const FelyxAvatar = (()=>{
   try{ const q = new URLSearchParams(location.search).get('avatar'); if(q !== null) localStorage.setItem('felyx_avatar', q === '0' ? '0' : '1'); }catch(e){}
   let ligado = true; try{ ligado = localStorage.getItem('felyx_avatar') !== '0'; }catch(e){}
@@ -1120,7 +1120,7 @@ const FelyxAvatar = (()=>{
         if(!pronto) return;
         if(Date.now() - ultimo > AVATAR_OCIOSO_MIN * 60000) return fechar();
         enviar('session.keep_alive');
-      }, 30000);
+      }, 10000);
     })().catch((e)=>{ console.warn('Felyx avatar:', e.message); fechar(); }).finally(()=>{ abrindo = null; });
     return abrindo;
   }
@@ -1180,6 +1180,15 @@ const GEN_FERRAMENTAS = {
     const r = await fetch(N8N + '/felix/app', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ acao:'comando', token: SESSAO, texto: comandoCasa(dispositivo, acao) }) });
     const j = await r.json(); return { ok: !!j.ok, resposta: String(j.text || j.mensagem || '').replace(/\balexa\b/gi, 'Vinci') };
   },
+  async estado_casa({ dispositivo }){
+    const r = await fetch(N8N + '/felix/app', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ acao:'estados', token: SESSAO }) });
+    const j = await r.json().catch(()=>({}));
+    const lista = Array.isArray(j.estados) ? j.estados : [];
+    if(!lista.length) return { disponivel:false, aviso:'A central não informou os estados agora. Diga isso e ofereça ligar ou desligar.' };
+    const alvo = String(dispositivo || '').toLowerCase();
+    const achados = alvo ? lista.filter(e=> String(e.nome).toLowerCase().includes(alvo) || alvo.includes(String(e.nome).toLowerCase())) : lista;
+    return { disponivel:true, estados: (achados.length ? achados : lista).map(e=>({ nome:e.nome, ligado: e.ligado === true ? 'ligado' : (e.ligado === false ? 'desligado' : 'sem informação') })) };
+  },
   async clima(){ return (await climaAgora()) || { erro:'indisponível agora' }; },
   async bolsas(){ return apoioGen('mercado', { pedido:'como estão as bolsas' }); },
   async noticias({ busca, url }){ return apoioGen('noticia', { busca: busca || '', url: url || '' }); },
@@ -1196,6 +1205,8 @@ const GEN_FERRAMENTAS = {
 const GEN_TOOLS = [{ functionDeclarations: [
   { name:'controlar_casa', description:'Liga, desliga ou aciona um aparelho ou cena da casa.', behavior:'BLOCKING',
     parameters:{ type:'OBJECT', properties:{ dispositivo:{ type:'STRING', description:'Nome exato do aparelho ou cena.' }, acao:{ type:'STRING', enum:['ligar','desligar','ativar'] } }, required:['dispositivo','acao'] } },
+  { name:'estado_casa', description:'Diz se aparelhos da casa estão ligados ou desligados agora. dispositivo: nome do aparelho (vazio = todos).', behavior:'BLOCKING',
+    parameters:{ type:'OBJECT', properties:{ dispositivo:{ type:'STRING' } } } },
   { name:'clima', description:'Clima agora e previsão de hoje no Rio de Janeiro.', behavior:'BLOCKING', parameters:{ type:'OBJECT', properties:{} } },
   { name:'bolsas', description:'Resumo do mercado de hoje: bolsas, Ibovespa e o que está mexendo com o dinheiro.', behavior:'BLOCKING', parameters:{ type:'OBJECT', properties:{} } },
   { name:'noticias', description:'Com busca (assunto em poucas palavras): manchetes recentes com fonte e url. Com url: o texto completo da matéria.', behavior:'BLOCKING',
@@ -1283,8 +1294,8 @@ class GeminiLive {
     this.viaAvatar = undefined;
     if(this.decisao === 'sim') FelyxAvatar.usar();
     // chamou só "Félix": a próxima fala, logo em seguida, vale sem repetir o nome
-    if(this.decisao === 'sim' && !this.liberado && SO_O_NOME.test(this.ouvido)) this.janelaAte = Date.now() + 15000;
-    else if(this.decisao === 'sim') this.janelaAte = 0;
+    // GEN: em conversa, as falas seguintes valem por 90 s sem repetir o nome (nada de silêncio numa pergunta de continuação)
+    if(this.decisao === 'sim') this.janelaAte = Date.now() + 90000;
     this.ouvido=''; this.decisao=null; this.liberado=false;
     if(!this.sources.length) this.abrirMic();
   }
