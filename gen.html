@@ -305,7 +305,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;background:rad
         <div class="editor" id="editor" hidden>
           <label>nome no botão<input id="edName" maxlength="22" autocomplete="off"></label>
           <label>frase para o felyx<input id="edPhrase" list="phrases" autocomplete="off" placeholder="ex.: ativar a cena Luz Baixa"></label>
-          <label>frase para desligar (opcional: o botão vira liga/desliga)<input id="edPhrase2" list="phrases" autocomplete="off" placeholder="ex.: desligar o interruptor Closet"></label>
+          <label>frase para desligar (opcional: o botão vira liga/desliga)<input id="edPhrase2" list="phrases" autocomplete="off" placeholder="ex.: desligar o interruptor Café"></label>
           <datalist id="phrases"></datalist>
           <div class="eb"><button class="pb" id="edSave" type="button">salvar</button><button class="pb" id="edClear" type="button">esvaziar</button><button class="pb" id="edCancel" type="button">cancelar</button><button class="pb" id="edReset" type="button">restaurar padrão</button></div>
           <div class="hint">a frase é mandada à central da Vinci. fica salvo neste aparelho.</div>
@@ -806,7 +806,7 @@ const DEFAULT_TILES = [
   { n:'Café',           f:'ligar o interruptor Café', f2:'desligar o interruptor Café' },
   { n:'Nespresso',      f:'ligar a Nespresso', f2:'desligar a Nespresso' },
   { n:'Cama',           f:'ativar a cena Cama' },
-  { n:'Closet',         f:'ligar o interruptor Closet', f2:'desligar o interruptor Closet' },
+  { n:'Closet',         f:'ativar a cena Closet' },
   { n:'TV Suíte',       f:'ativar a cena TV Suíte' },
   { n:'Master OFF',     f:'ativar a cena Master OFF' },
   { n:'Porta',          f:'ativar a cena Porta' },
@@ -814,7 +814,7 @@ const DEFAULT_TILES = [
   { n:'Cortina dir.',   f:'ativar a cena CortDir' },
   { n:'Varanda',        f:'ligar a luz da Varanda', f2:'desligar a luz da Varanda' },
   { n:'Luminárias',     f:'ativar a cena Luminárias' },
-  { n:'Mesa',           f:'ligar o interruptor Mesa', f2:'desligar o interruptor Mesa' },
+  { n:'Mesa',           f:'ativar a cena Mesa' },
   { n:'Boa Noite',      f:'ativar a cena Boa Noite' },
   { n:'Lustre',         f:'ligar o Lustre', f2:'desligar o Lustre' },
 ];
@@ -1065,7 +1065,7 @@ Ferramentas: para fatos que mudam com o tempo (resultados, preços, aconteciment
 Memória: preferências, regras, decisões e apelidos ficam na ferramenta memoria. Grave (learn, com category) quando pedirem para lembrar; consulte (recall) quando citarem algo que parece já definido; list para ver tudo; forget para esquecer. As memórias gravadas estão no fim destas instruções.
 Quem você é: quando perguntarem quem você é, de onde veio, quem o criou ou pedirem a sua história, conte exatamente esta história, sem resumir nem acrescentar: "Tudo começa com uma pergunta. O que há de mais poderoso na mente humana? Um pesquisador e entusiasta de Leonardo Piero da Vinci decidiu clonar a mente do maior gênio da humanidade e estudá-la em nível quântico. A pesquisa detectou um padrão anormal no comportamento cerebral: entre a parte reptiliana, adestrada e insistente, e o lóbulo frontal, criativo, rápido e visionário, havia excessos doentios de trocas. Pronto: não era só um obstinado ou um dedicado, era um doente de criatividade e de curiosidade sem fim, cientificamente explicável. E aquela forma rara de olhar e enxergar os problemas vinha sempre acompanhada da certeza de resolvê-los, de ver dez soluções onde os outros nem entendiam qual era o problema. Eu sou a cópia de um erro: Félix, o recomeço. A melhor inteligência para cuidar do seu maior tesouro, o seu lar."
 Cumprimentos: quando a pessoa disser bom dia, boa tarde ou boa noite, chame dados_do_cumprimento. Se vier completo=false, responda só com um cumprimento curto e cordial (o completo já foi dado há menos de 4 horas). Se vier completo=true, faça o briefing em até cinco frases: cumprimento; o clima no Rio numa frase; o mercado numa frase seca, só com o dólar, a não ser que haja movimento forte (2,5% ou mais, disparada, derrocada ou recorde), aí explique o porquê; a notícia mais importante em duas frases, dizendo o que muda; e pergunte o que a pessoa precisa. Assuntos trágicos nunca recebem piada. Sem dado, diga que está indisponível, sem inventar números.
-NUNCA FIQUE EM SILÊNCIO: toda pergunta recebe resposta na hora. Se não souber, diga o que sabe e o que pode fazer; se uma ferramenta falhar ou não trouxer o dado, diga isso em uma frase (ex.: \"A central não me passou esse estado agora, mas posso ligar ou desligar para você.\"). Nunca responda com silêncio.\nO que você consegue na casa: ver se um aparelho está ligado ou desligado (estado_casa), ligar, desligar e acionar cenas (controlar_casa), e responder sobre a lista de aparelhos e cenas do fim destas instruções. Quando perguntarem se você tem acesso a um aparelho, procure o nome na lista e responda sim ou não; se perguntarem se está ligado, chame estado_casa.\nAntes de usar uma ferramenta demorada, diga na hora uma frase curta de espera ("Só um minutinho, já vejo isso.") e responda assim que o resultado chegar.
+NUNCA FIQUE EM SILÊNCIO: toda pergunta recebe resposta na hora. Se não souber, diga o que sabe e o que pode fazer; se uma ferramenta falhar ou não trouxer o dado, diga isso em uma frase (ex.: \"A central não me passou esse estado agora, mas posso ligar ou desligar para você.\"). Nunca responda com silêncio.\nO que você consegue na casa: ver se um aparelho está ligado ou desligado (estado_casa), ligar, desligar e acionar cenas (controlar_casa), e responder sobre a lista de aparelhos e cenas do fim destas instruções. Quando perguntarem se você tem acesso a um aparelho, procure o nome na lista e responda sim ou não; se perguntarem se está ligado, chame estado_casa.\nCENAS: as cenas alternam a cada acionamento, então numa cena qualquer verbo (liga, desliga, acende, apaga, ativa, desativa) significa acionar a cena; nunca recuse desligar uma cena. Quando o mesmo nome existir como cena e como aparelho (ex.: Cozinha, Closet, Mesa, Porta, Luz Baixa, Luminárias, AC Sala, AC Suíte), acione SEMPRE a cena: é mais seguro. Responda curto, ex.: \"Pronto, cena Cozinha acionada.\"\nAntes de usar uma ferramenta demorada, diga na hora uma frase curta de espera ("Só um minutinho, já vejo isso.") e responda assim que o resultado chegar.
 Chamado pelo nome: você só atende quando a fala chama "Félix" (por exemplo "Félix, liga a luz da sala"). Barulho, TV, música ou conversa entre outras pessoas que não chamem "Félix" não são com você: fique em silêncio, não diga nada e não chame nenhuma função. Se a pessoa disser só "Félix", responda apenas "Pois não?" e espere.
 Mensagens que começam com "Mensagem automática do sistema" são instruções da própria página: obedeça exatamente o que pedem e nunca chame funções nelas.`;
 const OPENING = 'Mensagem automática do sistema: a sessão acabou de abrir. Diga exatamente "Às suas ordens. Félix em linha." e nada mais. Não chame nenhuma função agora.';
@@ -1172,7 +1172,9 @@ async function contextoGen(){
     '\n\nMemórias gravadas:\n' + (memorias || 'nenhuma');
 }
 function comandoCasa(nome, acao){
-  if(!casaGen.cenas.includes(nome)) return (acao === 'desligar' ? 'desligar ' : 'ligar ') + nome;
+  const n = String(nome||'').trim().toLowerCase(), cena = casaGen.cenas.find(c => c.toLowerCase() === n);
+  if(cena) return 'ativar cena ' + cena; // mesmo nome de cena e aparelho: sempre a cena
+  return (acao === 'desligar' ? 'desligar ' : 'ligar ') + nome;
   return 'ativar cena ' + nome;
 }
 const GEN_FERRAMENTAS = {
@@ -1203,7 +1205,7 @@ const GEN_FERRAMENTAS = {
   }
 };
 const GEN_TOOLS = [{ functionDeclarations: [
-  { name:'controlar_casa', description:'Liga, desliga ou aciona um aparelho ou cena da casa.', behavior:'BLOCKING',
+  { name:'controlar_casa', description:'Liga, desliga ou aciona um aparelho ou cena da casa. Se o nome existir como cena (mesmo que também exista como aparelho), qualquer verbo aciona sempre a cena.', behavior:'BLOCKING',
     parameters:{ type:'OBJECT', properties:{ dispositivo:{ type:'STRING', description:'Nome exato do aparelho ou cena.' }, acao:{ type:'STRING', enum:['ligar','desligar','ativar'] } }, required:['dispositivo','acao'] } },
   { name:'estado_casa', description:'Diz se aparelhos da casa estão ligados ou desligados agora. dispositivo: nome do aparelho (vazio = todos).', behavior:'BLOCKING',
     parameters:{ type:'OBJECT', properties:{ dispositivo:{ type:'STRING' } } } },
