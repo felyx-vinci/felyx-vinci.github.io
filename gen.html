@@ -1230,8 +1230,11 @@ const GEN_FERRAMENTAS = {
     const lista = Array.isArray(j.estados) ? j.estados : [];
     if(!lista.length) return { disponivel:false, aviso:'A central não informou os estados agora. Diga isso e ofereça ligar ou desligar.' };
     const alvo = String(dispositivo || '').toLowerCase();
-    const achados = alvo ? lista.filter(e=> String(e.nome).toLowerCase().includes(alvo) || alvo.includes(String(e.nome).toLowerCase())) : lista;
-    return { disponivel:true, estados: (achados.length ? achados : lista).map(e=>({ nome:e.nome, ligado: e.ligado === true ? 'ligado' : (e.ligado === false ? 'desligado' : 'sem informação') })) };
+    const fmt = (e)=> ({ nome:e.nome, estado: e.ligado === true ? 'ligado' : (e.ligado === false ? 'desligado' : 'sem resposta'), ...(e.modo ? { modo:e.modo } : {}), ...(e.temperatura_alvo ? { temperatura:e.temperatura_alvo } : {}) });
+    if(alvo){ const achados = lista.filter(e=> String(e.nome).toLowerCase().includes(alvo) || alvo.includes(String(e.nome).toLowerCase())); if(achados.length) return { disponivel:true, lido_em:j.em, estados: achados.map(fmt) }; }
+    // casa inteira: só o que está ligado (ar com modo e temperatura primeiro) e quantos são; leitura real da central
+    const ligados = lista.filter(e=> e.ligado === true).sort((a,b)=> (b.tipo === 'THERMOSTAT') - (a.tipo === 'THERMOSTAT'));
+    return { disponivel:true, lido_em:j.em, total_ligados: ligados.length, ligados: ligados.map(fmt), sem_resposta: lista.filter(e=> e.ligado === null).map(e=>e.nome) };
   },
   async clima(){ return (await climaAgora()) || { erro:'indisponível agora' }; },
   async bolsas(){ return apoioGen('mercado', { pedido:'como estão as bolsas' }); },
