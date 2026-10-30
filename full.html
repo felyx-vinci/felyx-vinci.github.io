@@ -1304,7 +1304,13 @@ class GeminiLive {
         this.pensando = true; this.mudo = true;
         this.onState('thinking');
         let texto = '';
+        // comando simples da casa ("desliga o Closet") vai direto pelo atalho, sem esperar o Claude pensar (3 s em vez de 20+)
         try{
+          const ra = await fetch(N8N + '/felix/app', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ acao:'comando', token: SESSAO, texto: pergunta.replace(/^\W*(ei|oi|ô|o)?\W*f[eé]l[iíy]x\W*/i, '') }) });
+          const ja = await ra.json();
+          if(ja && (ja.ok || ja.recusado) && ja.text) texto = String(ja.text).replace(/\balexa\b/gi, 'Vinci');
+        }catch(e){}
+        if(!texto) try{
           const r = await fetch(PERGUNTA_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pergunta: felyxCumprimento.ajustar(pergunta), sessionId: SESSION_ID, sessao: SESSAO }) });
           const j = await r.json(); texto = String(j.text || '').replace(/\balexa\b/gi, 'Vinci');
         }catch(e){ texto = ''; }
