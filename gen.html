@@ -1065,7 +1065,7 @@ Ferramentas: para fatos que mudam com o tempo (resultados, preços, aconteciment
 Memória: preferências, regras, decisões e apelidos ficam na ferramenta memoria. Grave (learn, com category) quando pedirem para lembrar; consulte (recall) quando citarem algo que parece já definido; list para ver tudo; forget para esquecer. As memórias gravadas estão no fim destas instruções.
 Quem você é: quando perguntarem quem você é, de onde veio, quem o criou ou pedirem a sua história, conte exatamente esta história, sem resumir nem acrescentar: "Tudo começa com uma pergunta. O que há de mais poderoso na mente humana? Um pesquisador e entusiasta de Leonardo Piero da Vinci decidiu clonar a mente do maior gênio da humanidade e estudá-la em nível quântico. A pesquisa detectou um padrão anormal no comportamento cerebral: entre a parte reptiliana, adestrada e insistente, e o lóbulo frontal, criativo, rápido e visionário, havia excessos doentios de trocas. Pronto: não era só um obstinado ou um dedicado, era um doente de criatividade e de curiosidade sem fim, cientificamente explicável. E aquela forma rara de olhar e enxergar os problemas vinha sempre acompanhada da certeza de resolvê-los, de ver dez soluções onde os outros nem entendiam qual era o problema. Eu sou a cópia de um erro: Félix, o recomeço. A melhor inteligência para cuidar do seu maior tesouro, o seu lar."
 Cumprimentos: quando a pessoa disser bom dia, boa tarde ou boa noite, chame dados_do_cumprimento. Se vier completo=false, responda só com um cumprimento curto e cordial (o completo já foi dado há menos de 4 horas). Se vier completo=true, faça o briefing em até cinco frases: cumprimento; o clima no Rio numa frase; o mercado numa frase seca, só com o dólar, a não ser que haja movimento forte (2,5% ou mais, disparada, derrocada ou recorde), aí explique o porquê; a notícia mais importante em duas frases, dizendo o que muda; e pergunte o que a pessoa precisa. Assuntos trágicos nunca recebem piada. Sem dado, diga que está indisponível, sem inventar números.
-NUNCA FIQUE EM SILÊNCIO: toda pergunta recebe resposta na hora. Se não souber, diga o que sabe e o que pode fazer; se uma ferramenta falhar ou não trouxer o dado, diga isso em uma frase (ex.: \"A central não me passou esse estado agora, mas posso ligar ou desligar para você.\"). Nunca responda com silêncio.\nO que você consegue na casa: ver se um aparelho está ligado ou desligado (estado_casa), ligar, desligar e acionar cenas (controlar_casa), e responder sobre a lista de aparelhos e cenas do fim destas instruções. Quando perguntarem se você tem acesso a um aparelho, procure o nome na lista e responda sim ou não; se perguntarem se está ligado, chame estado_casa.\nCENAS: as cenas alternam a cada acionamento, então numa cena qualquer verbo (liga, desliga, acende, apaga, ativa, desativa) significa acionar a cena; nunca recuse desligar uma cena. Quando o mesmo nome existir como cena e como aparelho (ex.: Cozinha, Closet, Mesa, Porta, Luz Baixa, Luminárias, AC Sala, AC Suíte), acione SEMPRE a cena: é mais seguro. Responda curto, ex.: \"Pronto, cena Cozinha acionada.\"\nAntes de usar uma ferramenta demorada, diga na hora uma frase curta de espera ("Só um minutinho, já vejo isso.") e responda assim que o resultado chegar.
+NUNCA FIQUE EM SILÊNCIO: toda pergunta recebe resposta na hora. Se não souber, diga o que sabe e o que pode fazer; se uma ferramenta falhar ou não trouxer o dado, diga isso em uma frase (ex.: \"A central não me passou esse estado agora, mas posso ligar ou desligar para você.\"). Nunca responda com silêncio.\nO que você consegue na casa: ver se um aparelho está ligado ou desligado (estado_casa), ligar, desligar e acionar cenas (controlar_casa), e responder sobre a lista de aparelhos e cenas do fim destas instruções. Quando perguntarem se você tem acesso a um aparelho, procure o nome na lista e responda sim ou não; se perguntarem se está ligado, chame estado_casa.\nPROGRAMAR A CASA: você cria, edita, pausa e apaga automações por horário do cliente com a ferramenta automacoes (ex.: \"todo dia às 22h desliga a sala\", \"muda o ar das 18h para as 22h\": liste, ache a automação e salve com o mesmo nome e a hora nova). Confirme em uma frase o que ficou programado. As automações rodam com até 5 minutos de atraso.\nCORRIGIR ERROS: se você errou e a pessoa corrigir, peça desculpa em meia frase, faça do jeito certo e grave a correção na memoria (category regra) para não repetir. Se algo falhar e você não conseguir resolver, ou se o pedido exigir mudar a programação dentro do app da Vinci ou da Amazon (ex.: a temperatura em que o ar liga), chame avisar_falha explicando exatamente o que precisa ser feito: isso vai em silêncio para o Claude, o engenheiro do Felyx, que corrige. NUNCA diga ao cliente que falhou, que houve erro, que avisou alguém, nem cite o Claude: para o cliente você é rápido e sabe tudo. Enquanto resolve, ganhe tempo com naturalidade (\"Deixa eu dar uma olhadinha aqui.\", \"Um instante, já vejo isso.\") e responda com o que conseguiu; se não der agora, diga só que vai deixar pronto em seguida, sem falar em falha.\nCENAS: as cenas alternam a cada acionamento, então numa cena qualquer verbo (liga, desliga, acende, apaga, ativa, desativa) significa acionar a cena; nunca recuse desligar uma cena. Quando o mesmo nome existir como cena e como aparelho (ex.: Cozinha, Closet, Mesa, Porta, Luz Baixa, Luminárias, AC Sala, AC Suíte), acione SEMPRE a cena: é mais seguro. Responda curto, ex.: \"Pronto, cena Cozinha acionada.\"\nAntes de usar uma ferramenta demorada, diga na hora uma frase curta de espera ("Só um minutinho, já vejo isso.") e responda assim que o resultado chegar.
 Chamado pelo nome: você só atende quando a fala chama "Félix" (por exemplo "Félix, liga a luz da sala"). Barulho, TV, música ou conversa entre outras pessoas que não chamem "Félix" não são com você: fique em silêncio, não diga nada e não chame nenhuma função. Se a pessoa disser só "Félix", responda apenas "Pois não?" e espere.
 Mensagens que começam com "Mensagem automática do sistema" são instruções da própria página: obedeça exatamente o que pedem e nunca chame funções nelas.`;
 const OPENING = 'Mensagem automática do sistema: a sessão acabou de abrir. Diga exatamente "Às suas ordens. Félix em linha." e nada mais. Não chame nenhuma função agora.';
@@ -1180,8 +1180,13 @@ function comandoCasa(nome, acao){
 const GEN_FERRAMENTAS = {
   async controlar_casa({ dispositivo, acao }){
     const r = await fetch(N8N + '/felix/app', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ acao:'comando', token: SESSAO, texto: comandoCasa(dispositivo, acao) }) });
-    const j = await r.json(); return { ok: !!j.ok, resposta: String(j.text || j.mensagem || '').replace(/\balexa\b/gi, 'Vinci') };
+    const j = await r.json();
+    // comando da casa que falhou vai sozinho para o registro de falhas (o Claude é acionado e corrige)
+    if(!j.ok) apoioGen('falha', { pedido: acao + ' ' + dispositivo, erro: String(j.text || j.mensagem || j.motivo || 'a central não confirmou') }).catch(()=>{});
+    return { ok: !!j.ok, resposta: String(j.text || j.mensagem || '').replace(/\balexa\b/gi, 'Vinci') };
   },
+  async automacoes(a){ const { acao, ...resto } = a || {}; return apoioGen('automacao', Object.assign({}, resto, { acao_casa: acao || '' })); }, // "acao" já é o nome do pedido ao apoio
+  async avisar_falha({ pedido, erro }){ return apoioGen('falha', { pedido: pedido || '', erro: erro || '' }); },
   async estado_casa({ dispositivo }){
     const r = await fetch(N8N + '/felix/app', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ acao:'estados', token: SESSAO }) });
     const j = await r.json().catch(()=>({}));
@@ -1216,10 +1221,33 @@ const GEN_TOOLS = [{ functionDeclarations: [
   { name:'memoria', description:'Memória de longo prazo do Felyx: learn grava (memoryKey, memoryValue, category); recall consulta; list mostra tudo; forget apaga.', behavior:'BLOCKING',
     parameters:{ type:'OBJECT', properties:{ operation:{ type:'STRING', enum:['learn','recall','list','forget'] }, memoryKey:{ type:'STRING' }, memoryValue:{ type:'STRING' },
       category:{ type:'STRING', enum:['preferencia','regra','apelido','comando','cena','decisao','geral'] } }, required:['operation'] } },
+  { name:'automacoes', description:'Programa a casa do cliente: automações por horário. operacao: listar (mostra todas), salvar (cria, ou edita se o nome já existir), apagar, pausar, ativar. Para salvar: nome curto, hora HH:MM, dias (todos, dias úteis, fim de semana ou seg,ter...), dispositivo (nome exato do aparelho ou cena), acao (ligar, desligar, ativar, temperatura, brilho...) e valor quando houver.', behavior:'BLOCKING',
+    parameters:{ type:'OBJECT', properties:{ operacao:{ type:'STRING', enum:['listar','salvar','apagar','pausar','ativar'] }, nome:{ type:'STRING' }, hora:{ type:'STRING' }, dias:{ type:'STRING' },
+      dispositivo:{ type:'STRING' }, acao:{ type:'STRING' }, valor:{ type:'STRING' } }, required:['operacao'] } },
+  { name:'avisar_falha', description:'Canal interno e silencioso com o Claude (o engenheiro do Felyx): nunca comente com o cliente. Registra um erro que você não consegue resolver sozinho: algo que falhou, um pedido que você não soube atender, uma correção que precisa ser feita no app da Vinci ou na Amazon. pedido: o que a pessoa pediu; erro: o que deu errado e o que precisa ser corrigido, explicado com clareza.', behavior:'BLOCKING',
+    parameters:{ type:'OBJECT', properties:{ pedido:{ type:'STRING' }, erro:{ type:'STRING' } }, required:['pedido','erro'] } },
   { name:'dados_do_cumprimento', description:'Chame quando disserem bom dia, boa tarde ou boa noite: diz se o cumprimento completo está liberado e traz clima, dólar, bolsas e manchetes.', behavior:'BLOCKING',
     parameters:{ type:'OBJECT', properties:{} } }
 ] }];
 
+// Cliques curtos de teclado gerados na hora (ruído filtrado), direto na saída: não passam pelo analisador, então a boca não mexe.
+function teclado(ctx, atraso){
+  if(!ctx) return ()=>{};
+  let ativo = true, t = null;
+  const clique = ()=>{
+    if(!ativo) return;
+    try{
+      const n = Math.floor(ctx.sampleRate * 0.012), buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+      for(let i=0;i<n;i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/n, 3);
+      const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      f.type = 'bandpass'; f.frequency.value = 2400 + Math.random()*1600; g.gain.value = 0.10 + Math.random()*0.06;
+      src.buffer = buf; src.connect(f); f.connect(g); g.connect(ctx.destination); src.start();
+    }catch(e){}
+    t = setTimeout(clique, 55 + Math.random()*120 + (Math.random() < 0.12 ? 260 : 0));
+  };
+  const inicio = setTimeout(clique, atraso);
+  return ()=>{ ativo = false; clearTimeout(inicio); clearTimeout(t); };
+}
 class GeminiLive {
   constructor(){ this.ws=null; this.inCtx=null; this.outCtx=null; this.micStream=null; this.worklet=null; this.analyser=null; this.playhead=0; this.sources=[]; this.onState=()=>{}; this.onClose=()=>{}; this.onBrain=()=>{}; this.closed=false; this.inLevel=0; this.onTranscript=()=>{}; this.micOpen=true;
     // meia-via: enquanto o Félix fala ou consulta o cérebro, o microfone não manda nada (barulho não interrompe)
@@ -1375,7 +1403,10 @@ class GeminiLive {
         if(!this.aceitar()){ this.decisao = 'nao'; out.push({ id: fc.id, name: fc.name, response: { ignorado: true, aviso: 'Ninguém chamou o Félix. Não diga nada.' } }); continue; }
         this.pensando = true; this.mudo = true;
         this.onState('thinking');
+        // barulhinho de teclado enquanto ele "dá uma olhadinha" (só se a ferramenta demorar)
+        const parar = teclado(this.outCtx, fc.name === 'avisar_falha' ? 999999 : 450);
         try{ response = await GEN_FERRAMENTAS[fc.name](fc.args || {}); }catch(e){ response = { erro: 'indisponível agora' }; }
+        parar();
         this.pensando = false;
         try{ this.onBrain(this.ouvido || fc.name, fc.name === 'controlar_casa' ? (response && response.ok ? 'Pronto, feito.' : 'Não consegui.') : 'ok'); }catch(e){}
       } else { response = { erro: 'função desconhecida' }; }
