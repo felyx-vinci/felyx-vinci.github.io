@@ -968,8 +968,7 @@ async function bootSequence(){
   dotHouse.dataset.on = '1';
 }
 
-/* ---------- boas-vindas (texto escrito pelo Claude no n8n, lido pelo Felyx) ---------- */
-const BOASVINDAS_URL = N8N + '/felix/boasvindas';
+/* ---------- boas-vindas (montadas aqui com os dados da tela, lidas pelo Felyx; cópia do GEN) ---------- */
 function saudacaoAgora(){ const h = new Date().getHours(); return h >= 5 && h < 12 ? 'Bom dia' : (h >= 12 && h < 18 ? 'Boa tarde' : 'Boa noite'); }
 async function climaAgora(){
   try{
@@ -1006,16 +1005,16 @@ async function pedirBoasVindas(){
   const sd = saudacaoAgora();
   try{
     await Promise.allSettled([ mercadoData ? null : loadMercado(true), (newsPol.items.length && newsTec.items.length) ? null : loadNoticias(true) ]);
-    const clima = await climaAgora();
-    const body = { saudacao: sd, hora: hhmm(new Date()), clima, dolar: dolarResumo(mercadoData),
-      politica: (newsPol.items.length ? newsPol.items : ((ultimasNoticias && ultimasNoticias.politica) || []).slice(0,6)).map(n=>n.title),
-      tecnologia: (newsTec.items.length ? newsTec.items : ((ultimasNoticias && ultimasNoticias.tecnologia) || []).slice(0,6)).map(n=>n.title) };
-    const ctrl = new AbortController(); const tm = setTimeout(()=>ctrl.abort(), 25000);
-    body.sessao = SESSAO;
-    const r = await fetch(BOASVINDAS_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body), signal: ctrl.signal });
-    clearTimeout(tm);
-    const j = await r.json();
-    if(j && Array.isArray(j.segmentos) && j.segmentos.length){ const segs = filtrarSegmentos(j.segmentos); if(segs.length) return segs; }
+    const c = await climaAgora();
+    const pol = (newsPol.items.length ? newsPol.items : ((ultimasNoticias && ultimasNoticias.politica) || []))[0];
+    const tec = (newsTec.items.length ? newsTec.items : ((ultimasNoticias && ultimasNoticias.tecnologia) || []))[0];
+    const dolar = dolarResumo(mercadoData);
+    const segs = [{ alvo:'abertura', noticia:null, texto: sd + ', Leandro.' + (c ? ' No Rio, ' + fmt(c.temperatura,0) + ' graus agora' + (c.descricao ? ', ' + c.descricao : '') + ', máxima de ' + fmt(c.max,0) + (c.chuva >= 50 ? ' e boa chance de chuva.' : '.') : '') }];
+    if(dolar) segs.push({ alvo:'mercado', noticia:null, texto: 'No mercado, o dólar está em ' + dolar.replace('R$ ', '').replace(/\s*\(.*$/, '') + ' reais.' });
+    if(pol && pol.title) segs.push({ alvo:'politica', noticia:0, texto: 'Na política: ' + String(pol.title).replace(/[.!?]*$/, '.') });
+    if(tec && tec.title) segs.push({ alvo:'tecnologia', noticia:0, texto: 'Em tecnologia: ' + String(tec.title).replace(/[.!?]*$/, '.') });
+    segs.push({ alvo:'fecho', noticia:null, texto: 'Em que posso ser útil?' });
+    return filtrarSegmentos(segs);
   }catch(e){}
   return boasVindasLocal(sd);
 }
