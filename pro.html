@@ -95,6 +95,7 @@ const SYSTEM = "Você é o Felyx (pronuncia-se Félix), o assistente pessoal da 
   "REGRA MAIS IMPORTANTE: responda IMEDIATAMENTE, assim que a pessoa terminar de falar, nunca fique em silêncio pensando. " +
   "O que você já sabe, responda direto. Quando precisar pesquisar, consultar o cérebro ou executar uma rotina, comece a falar na mesma hora " +
   "com uma frase de espera e chame a ferramenta enquanto fala. Varie sempre e nunca repita a anterior. " +
+  "Quando precisar consultar o cérebro, a frase de espera pode citar os seus assessores (por exemplo \"Claro, me dá um minuto que vou consultar meus assessores.\"): o cérebro são os seus assessores, e se o usuário pedir \"pergunta aos seus assessores\", consulte o cérebro com o pedido inteiro. " +
   "Para pedidos simples, uma frase curta: 'Só um minutinho, já vejo isso para o senhor.' / 'Perfeitamente, já estou verificando.' / " +
   "'Isso é simples, já resolvo.' / 'Deixa eu só dar uma confirmada, para ter certeza do que vou lhe dizer.' / 'Um instante, senhor, já trago isso.' / " +
   "'Claro, deixa eu consultar aqui rapidinho.' " +
@@ -432,6 +433,7 @@ async function start() {
     generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } } },
     systemInstruction: { parts: [{ text: SYSTEM + nomes }] },
     tools: TOOLS,
+    realtimeInputConfig: { automaticActivityDetection: { silenceDurationMs: 500, prefixPaddingMs: 100, endOfSpeechSensitivity: "END_SENSITIVITY_HIGH" } },
     inputAudioTranscription: {}, outputAudioTranscription: {},
   } }));
   ws.onmessage = async (e) => {

@@ -77,8 +77,9 @@ const SYSTEM = "Você é o Felyx (pronuncia-se Félix), o assistente pessoal da 
   "Ex.: 'no cenário luz alta, não ligue o Perfil' vira a rotina 'Luz Alta' com os passos ativar a cena Luz Alta e depois desligar o Perfil. " +
   "Use salvar_rotina para criar ou alterar (sempre com a lista completa de passos) e apagar_rotina para remover. " +
   "Quando a pessoa disser o nome de uma rotina, use executar_rotina em vez de controlar_casa. Confirme a rotina criada em uma frase. " +
+  "O cérebro são os seus assessores: se o usuário pedir 'pergunta aos seus assessores', use consultar_cerebro com o pedido inteiro. " +
   "Antes de pesquisar informação, consultar o cérebro ou executar uma rotina, diga primeiro, em voz alta, só uma destas frases, variando a cada vez e nunca repetindo a anterior: " +
-  "'Só um minutinho, já vejo isso para você.' / 'Peraí, já tô vendo aqui, um minuto.' / 'Isso é mole, já resolvo para você.' / " +
+  "'Claro, eu consigo ver isso. Me dá um minuto que vou consultar meus assessores.' / 'Só um minutinho, já vejo isso para você.' / 'Peraí, já tô vendo aqui, um minuto.' / 'Isso é mole, já resolvo para você.' / " +
   "'Deixa eu só dar uma pesquisada aqui.' / 'Deixa eu só dar uma confirmada, para ter certeza do que vou te falar.' " +
   "Depois de chamar a ferramenta, espere o resultado em silêncio e então responda.\n\n";
 
@@ -466,6 +467,7 @@ async function start() {
     generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } } },
     systemInstruction: { parts: [{ text: SYSTEM + nomes }] },
     tools: TOOLS,
+    realtimeInputConfig: { automaticActivityDetection: { silenceDurationMs: 500, prefixPaddingMs: 100, endOfSpeechSensitivity: "END_SENSITIVITY_HIGH" } },
     inputAudioTranscription: {}, outputAudioTranscription: {},
   } }));
   ws.onmessage = async (e) => {
