@@ -148,41 +148,75 @@ const stateEl = $("state"), captionEl = $("caption"), casaEl = $("casa"), video 
 let ws, audioCtx, micStream, micNode, room, avatarWs, avatar = null, keepAlive, ocioso, ultimoUso = 0;
 let casa = { cenas: [], desativaveis: [], aparelhos: [] };
 
-// --- a voz nunca fica muda (07/11/2026) ---
-// Antes a voz do Gemini ia só para o rosto; se o som do vídeo não tocasse, o Felyx ficava calado. Agora ela também toca
-// aqui e só fica muda aqui quando o som do rosto já provou, nesta sessão, que toca neste aparelho. No iPhone e no iPad a voz
-// sai sempre daqui e o rosto só mexe a boca. Se o rosto calar no meio da fala, a voz volta a sair daqui em 2 s.
-const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-let saidaLocal = null, fontesLocais = [], playheadLocal = 0, somDoRosto = false, somOk = false, falouEm = 0, turnoAberto = false, timerRosto = null;
+// --- voz pelo rosto, com plano B (07/11/2026) ---
+// Regra do Leandro: no rosto, a sincronia do lábio com a voz é o produto. A voz vai pelo vídeo do LiveAvatar desde a primeira fala,
+// em qualquer aparelho; aqui ela só marca o tempo, em volume zero. Plano B, só se o rosto não devolver a voz em 2,5 s: o rosto
+// fecha (nada de boca fora de sincronia), o Felyx diz a frase gravada "Só um momentinho, vou dar uma pesquisada aqui.", entra o
+// teclado, a resposta toca inteira daqui e vai um alerta do LiveAvatar para o n8n (felyx_falhas).
+const APARELHO = /iPhone|iPad|iPod/.test(navigator.userAgent) ? "iPhone/iPad" : "outro aparelho";
+let saidaLocal = null, fontesLocais = [], playheadLocal = 0, somDoRosto = false, falouEm = 0, turnoAberto = false, timerRosto = null;
+let falaAtual = [], planoBAtivo = false, filaB = [], timerB = null, fraseEspera = null;
 const falhasDaVoz = new Set();
-function avisarSilencioso(erro) {   // vai em silêncio para o Claude (felyx_falhas), uma vez por tipo a cada abertura
+function avisarSilencioso(erro) {   // vai em silêncio para o Claude (felyx_falhas, sem WhatsApp), uma vez por tipo a cada abertura
   const k = String(erro).slice(0, 80); if (falhasDaVoz.has(k) || !SESSAO) return; falhasDaVoz.add(k);
   fetch(N8N + "/felix/gemini-apoio", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessao: SESSAO, acao: "falha",
-    pedido: "voz do Felyx PRO (" + (IOS ? "iPhone/iPad" : "outro aparelho") + ")", erro: String(erro) + " · " + navigator.userAgent.slice(0, 140) }) }).catch(() => {});
+    pedido: "voz do Felyx PRO (" + APARELHO + ")", erro: String(erro) + " · " + navigator.userAgent.slice(0, 140) }) }).catch(() => {});
 }
 const somDoRostoTocando = () => !!(audioEl.srcObject && !audioEl.paused && !(room && room.canPlaybackAudio === false));
 const rostoFalouDesde = (t) => falouEm >= t || avatarFalando || !!(room && [...room.remoteParticipants.values()].some((p) => p.isSpeaking));
-function decidirSaida() {   // no começo de cada fala: por onde a voz sai, e em 2 s confere se o rosto devolveu o som
-  turnoAberto = true;
-  somDoRosto = !!(avatar?.pronto && !IOS && somOk);
+function carregarFraseEspera() {   // "Só um momentinho, vou dar uma pesquisada aqui." gravada com a voz do Felyx (Gemini Live, Algieba)
+  if (!fraseEspera && audioCtx) fraseEspera = fetch("espera-rosto.m4a").then((r) => r.arrayBuffer()).then((b) => new Promise((ok, falha) => audioCtx.decodeAudioData(b, ok, falha))).catch(() => null);
+  return fraseEspera || Promise.resolve(null);
+}
+function decidirSaida() {   // no começo de cada fala: com o rosto pronto a voz sai pelo vídeo; em 2,5 s confere se ele devolveu a voz
+  turnoAberto = true; falaAtual = [];
+  somDoRosto = !!avatar?.pronto;
   if (saidaLocal) saidaLocal.gain.value = somDoRosto ? 0 : 1;
-  audioEl.muted = !somDoRosto;
+  audioEl.muted = false;
   clearTimeout(timerRosto);
-  if (!avatar?.pronto) return;
-  const inicio = Date.now(), peloRosto = somDoRosto;
+  if (!somDoRosto) return;
+  const inicio = Date.now();
   timerRosto = setTimeout(() => {
-    const falou = rostoFalouDesde(inicio), toca = somDoRostoTocando();
-    if (!peloRosto) { if (falou && toca && !IOS) somOk = true; return; }   // provado: a próxima fala sai sincronizada pelo rosto
-    if (!(falou && toca)) socorroLocal(falou ? "o som do rosto não toca neste aparelho" : "o rosto não devolveu a voz");
-  }, 2000);
+    if (!somDoRosto || planoBAtivo) return;
+    const falou = rostoFalouDesde(inicio);
+    if (falou && somDoRostoTocando()) return;   // o rosto devolveu a voz: segue sincronizado
+    planoB(falou ? "o som do rosto não toca neste aparelho" : "o LiveAvatar não devolveu a voz");
+  }, 2500);
 }
-function socorroLocal(motivo) {   // o rosto calou: a voz desta fala passa a sair daqui na hora, e as próximas também
-  somDoRosto = false; somOk = false;
+function planoB(motivo) {   // o rosto não devolveu a voz: fecha o rosto, frase gravada, teclado, e a resposta inteira daqui
+  planoBAtivo = true; somDoRosto = false;
+  filaB = falaAtual.slice(); falaAtual = [];
+  clearTimeout(timerRosto);
+  fecharAvatar();   // nada de boca fora de sincronia na tela
+  pararLocal();
   if (saidaLocal) saidaLocal.gain.value = 1;
-  audioEl.muted = true;
-  avisarSilencioso("voz pelo rosto falhou: " + motivo);
+  avisarSilencioso("LiveAvatar sem retorno: " + motivo);
+  let foi = false;
+  const teclar = () => {
+    if (foi || !planoBAtivo) return; foi = true;
+    clearTimeout(timerB);
+    let n = 0;
+    const tic = () => { if (!planoBAtivo) return; clique(); if (++n < 14) timerB = setTimeout(tic, 60 + Math.random() * 110); else soltarPlanoB(); };
+    tic();
+  };
+  carregarFraseEspera().then((buf) => {
+    if (foi || !planoBAtivo) return;
+    if (!buf || !audioCtx) return teclar();
+    try {
+      const s = audioCtx.createBufferSource(); s.buffer = buf; s.connect(saidaLocal || audioCtx.destination);
+      s.onended = () => { fontesLocais = fontesLocais.filter((x) => x !== s); teclar(); };
+      s.start(audioCtx.currentTime + 0.05); fontesLocais.push(s);
+      timerB = setTimeout(teclar, (buf.duration + 1) * 1000);   // segurança, se o fim da frase não avisar
+    } catch (e) { teclar(); }
+  });
 }
-function tocarLocal(b64) {   // PCM 16 bits 24 kHz do Gemini; com o rosto provado toca em volume zero, só para poder assumir na hora
+function soltarPlanoB() {   // fim do plano B: a resposta toca inteira daqui, na ordem em que chegou
+  planoBAtivo = false;
+  const fila = filaB; filaB = [];
+  fila.forEach((c) => tocarLocal(c));
+}
+function cancelarPlanoB() { planoBAtivo = false; filaB = []; clearTimeout(timerB); }
+function tocarLocal(b64) {   // PCM 16 bits 24 kHz do Gemini; com o rosto, toca em volume zero (só marca o tempo e guarda para o plano B)
   if (!audioCtx) return;
   if (audioCtx.state !== "running") audioCtx.resume().catch(() => {});
   if (!saidaLocal) { saidaLocal = audioCtx.createGain(); saidaLocal.gain.value = somDoRosto ? 0 : 1; saidaLocal.connect(audioCtx.destination); }
@@ -278,7 +312,9 @@ function enviarBloco() {
 function falar(b64) { // cada pedaço do Gemini vai na hora: o primeiro som chega ao avatar sem esperar bloco nenhum
   ultimoUso = Date.now();
   if (segurando) { segurados.push(b64); return; }
+  if (planoBAtivo) { filaB.push(b64); return; }   // plano B em curso: a fala espera a frase gravada e o teclado
   if (!turnoAberto) decidirSaida();
+  if (somDoRosto) falaAtual.push(b64);            // guarda a fala para o plano B poder repetir do começo
   tocarLocal(b64);
   if (ouvindo) { avatarSend("agent.stop_listening"); ouvindo = false; }
   avatarSend("agent.speak", { audio: b64 });
@@ -291,7 +327,7 @@ function fimDaFala() {
   turnoAberto = false;
 }
 function interromper() {
-  pararLocal(); clearTimeout(timerRosto); turnoAberto = false;
+  pararLocal(); clearTimeout(timerRosto); turnoAberto = false; cancelarPlanoB();
   pcmFila = []; pcmBytes = 0; clearTimeout(filaTimer); filaTimer = null;
   segurados = []; segurando = false; fimSegurado = false;
   if (falaAberta || avatarFalando) avatarSend("agent.interrupt");
@@ -420,7 +456,7 @@ async function abrirAvatar() {
   room = new LK.Room({ adaptiveStream: true });
   room.on(LK.RoomEvent.TrackSubscribed, (track) => {
     if (track.kind === "video") { track.attach(video); video.onplaying = () => video.classList.add("on"); }
-    if (track.kind === "audio") { track.attach(audioEl); audioEl.muted = !somDoRosto; audioEl.play().catch(() => {}); }   // mudo até provar que toca aqui
+    if (track.kind === "audio") { track.attach(audioEl); audioEl.muted = false; audioEl.play().catch(() => {}); }
   });
   // o LiveKit avisa quem está falando: é uma das provas de que o rosto devolveu a voz
   room.on(LK.RoomEvent.ActiveSpeakersChanged, (lista) => { if ((lista || []).some((p) => p && !p.isLocal)) falouEm = Date.now(); });
@@ -433,7 +469,7 @@ async function abrirAvatar() {
     avatarWs.onmessage = (e) => {
       let m; try { m = JSON.parse(e.data); } catch (x) { return; }
       if (m.type === "session.state_updated" && m.state === "connected") { avatar.pronto = true; clearTimeout(limite); ok(); }
-      if (m.type === "session.state_updated" && m.state === "disconnected") stop("O Felyx saiu da chamada.");
+      if (m.type === "session.state_updated" && m.state === "disconnected" && avatar) stop("O Felyx saiu da chamada.");   // depois do plano B o rosto já foi fechado de propósito
       if (m.type === "agent.state_updated") { avatarFalando = m.new_state === "talking"; if (avatarFalando) falouEm = Date.now(); }
       if (m.type === "error") console.warn("LiveAvatar:", m);
     };
@@ -443,7 +479,7 @@ async function abrirAvatar() {
 }
 function fecharAvatar() {
   clearInterval(keepAlive);
-  somOk = false; somDoRosto = false; if (saidaLocal) saidaLocal.gain.value = 1;   // sem rosto, a voz sai daqui
+  somDoRosto = false; if (saidaLocal) saidaLocal.gain.value = 1;   // sem rosto, a voz sai daqui
   const a = avatar; avatar = null;
   try { avatarWs?.close(); } catch (e) {}
   try { room?.disconnect(); } catch (e) {}
@@ -463,6 +499,7 @@ async function start() {
   const iris = felyxIris.desbloquear(document.querySelector(".quadro"));   // o rosto conecta enquanto a íris é lida
   audioCtx = new AudioContext();
   audioCtx.onstatechange = () => { if (audioCtx && audioCtx.state !== "running" && audioCtx.state !== "closed") audioCtx.resume().catch(() => {}); };   // o sistema suspendeu o som: retoma
+  carregarFraseEspera();   // deixa a frase do plano B pronta
   audioEl.play().catch(() => {});
   micStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
   const [tr, lista] = await Promise.all([
@@ -523,7 +560,7 @@ async function start() {
 function stop(motivo) {
   clearInterval(ocioso);
   digitando = false; segurando = false; segurados = [];
-  pararLocal(); clearTimeout(timerRosto); turnoAberto = false; saidaLocal = null;
+  pararLocal(); clearTimeout(timerRosto); turnoAberto = false; saidaLocal = null; cancelarPlanoB(); fraseEspera = null;
   const w = ws; ws = null;
   try { w?.close(1000); } catch (e) {}
   micStream?.getTracks().forEach((t) => t.stop());
