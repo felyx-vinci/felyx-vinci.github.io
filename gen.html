@@ -634,6 +634,7 @@ const N8N = 'https://vinciautomacao.app.n8n.cloud/webhook';
 const TOKEN_URL = N8N + '/felix/token';
 // Felyx GEN: a tela do FULL com o cérebro só no Gemini, sem o Claude. O n8n (felix/gemini-apoio) só entrega dados.
 const APOIO_URL = N8N + '/felix/gemini-apoio';
+const MOTOR_URL = 'https://script.google.com' + '/macros/s/' + 'AKfycbyYzB4W_omCbBVCqUNGLqz4EGJps2PHoDbiOeRHqc-iKsU70lHAsLiFShNIRgCtxgen' + '/exec';
 const MERCADO_URL = N8N + '/felix/mercado';
 const NOTICIAS_URL = N8N + '/felix/noticias';
 const SESSION_ID = 'hud-' + Math.random().toString(36).slice(2, 8);
@@ -685,7 +686,7 @@ function esconderLogin(){ const el = document.getElementById('felyxLogin'); if(e
 /* ===================== mercado (em real) ===================== */
 const OIL_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c-3.2 4.3-6 7.6-6 11.3A6 6 0 0 0 18 13.8c0-3.7-2.8-7-6-11.3zm0 16.3a3 3 0 0 1-3-3c0-.5.4-.8.8-.8s.8.3.8.8a1.4 1.4 0 0 0 1.4 1.4c.5 0 .8.4.8.8s-.3.8-.8.8z"/></svg>';
 const ASSETS = [
-  { id:'usd', nome:'USDT/BRL', glyph:'$', dec:4, pick:(m)=> m.usdtbrl ? { brl:m.usdtbrl.preco, chg:m.usdtbrl.chg, sub:'dólar em real' } : ((m.cambio && m.cambio.usdbrl) ? { brl:m.cambio.usdbrl, chg:null, sub:'dólar em real' } : null) },
+  { id:'usd', nome:'USDT/BRL', glyph:'$', dec:4, pick:(m)=> (m.cotacoes && m.cotacoes.usd_brl) ? { brl:m.cotacoes.usd_brl.valor, chg:m.cotacoes.usd_brl.variacao, sub:'dólar em real' } : (m.usdtbrl ? { brl:m.usdtbrl.preco, chg:m.usdtbrl.chg, sub:'dólar em real' } : ((m.cambio && m.cambio.usdbrl) ? { brl:m.cambio.usdbrl, chg:null, sub:'dólar em real' } : null)) },
   { id:'oil', nome:'CLUSDT', glyph:OIL_SVG, dec:2, usdt:true, pick:(m)=> m.clusdt ? { ...m.clusdt, chgUsdt:m.clusdt.chg, sub:'petróleo wti' } : null },
 ];
 const marketRows = document.getElementById('marketRows'), marketWhen = document.getElementById('marketWhen');
@@ -748,8 +749,12 @@ function loadMercado(force){
 async function buscarMercado(){
   mercadoAt = Date.now();
   try{
-    const m = await fetchMercadoDireto();
-    if(!m || !m.ok) throw new Error('sem conexão');
+    const [mDireto, mMotor] = await Promise.all([
+      fetchMercadoDireto().catch(()=>null),
+      fetch(MOTOR_URL, { cache:'no-store' }).then(r=>r.json()).catch(()=>null)
+    ]);
+    const m = mDireto || { ok:true };
+    if(mMotor && mMotor.cotacoes) m.cotacoes = mMotor.cotacoes;
     mercadoData = m; renderMercado(m); return m;
   }catch(e){
     marketWhen.textContent = 'sem conexão'; return null;
@@ -810,12 +815,24 @@ function loadNoticias(force){
 async function buscarNoticias(){
   noticiasAt = Date.now();
   try{
-    const r = await fetch(NOTICIAS_URL, { cache:'no-store' }); const j = await r.json();
-    if(!j || !j.ok) throw new Error('ponte sem notícias');
-    ultimasNoticias = j; newsPol.set(j.politica); setTimeout(()=>newsTec.set(j.tecnologia), 1200);
+    const r = await fetch(MOTOR_URL, { cache:'no-store' }); const j = await r.json();
+    const n = j.noticias || j;
+    if(!n || (!n.politica && !n.destaques)) throw new Error('motor sem dados');
+    const limpar = (t, f) => { let s = String(t||'').trim(); if(f && s.endsWith(' - '+f)) s = s.slice(0, -(' - '+f).length).trim(); return s; };
+    const conv = (arr, cat) => (arr||[]).map(x=>({ title: limpar(x.titulo||x.title, x.fonte||x.source), link: x.link, source: x.fonte||x.source||'Google', date: x.horario||x.date, cat }));
+    const pol = conv(n.politica, 'política');
+    const tec = conv(n.tecnologia, 'tecnologia');
+    ultimasNoticias = { ok:true, politica: pol, tecnologia: tec };
+    newsPol.set(pol); setTimeout(()=>newsTec.set(tec), 1200);
   }catch(e){
-    if(!newsPol.items.length) newsPol.slides.innerHTML = '<div class="empty">notícias indisponíveis</div>';
-    if(!newsTec.items.length) newsTec.slides.innerHTML = '<div class="empty">notícias indisponíveis</div>';
+    try{
+      const r = await fetch(NOTICIAS_URL, { cache:'no-store' }); const j = await r.json();
+      if(!j || !j.ok) throw 0;
+      ultimasNoticias = j; newsPol.set(j.politica); setTimeout(()=>newsTec.set(j.tecnologia), 1200);
+    }catch(e2){
+      if(!newsPol.items.length) newsPol.slides.innerHTML = '<div class="empty">notícias indisponíveis</div>';
+      if(!newsTec.items.length) newsTec.slides.innerHTML = '<div class="empty">notícias indisponíveis</div>';
+    }
   }
 }
 
