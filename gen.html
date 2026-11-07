@@ -508,10 +508,74 @@ function drawTicks(t){
   }
 }
 
+/* ---------- rosto do Felyx GEM: V da Vinci amarelo com anel de partículas ---------- */
+// Mesmo V da página /v (proporções do logo oficial). Em volta, um anel inclinado de partículas, como o de Saturno,
+// que gira mais rápido e solta bolinhas quando o Felyx fala.
+const V_PONTOS = [[0, 0], [0.5, 0.625], [1, 0], [1, 0.372], [0.5, 1], [0, 0.372]];
+function caminhoV(c, w){ const h = w*0.803, x0 = c - w/2, y0 = c - h/2; ctx.beginPath(); V_PONTOS.forEach(([x, y], i)=> (i ? ctx.lineTo : ctx.moveTo).call(ctx, x0 + x*w, y0 + y*h)); ctx.closePath(); }
+const faiscasV = Array.from({ length: 120 }, ()=>({ x: Math.random(), y: Math.random(), v: 0.2 + Math.random() }));
+const anelV = Array.from({ length: 180 }, ()=>({ a: Math.random()*Math.PI*2, r: 0.92 + Math.random()*0.16, v: 0.25 + Math.random()*0.6, z: Math.random() }));
+const soltasV = [], ondasV = [];
+function desenhaV(t, now){
+  const W = cv.width, c = W/2;
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, W);
+  let alvo = 0;
+  if(state === 'speaking' || demoUntil > now) alvo = Math.min(1, open*1.6);
+  else if(state === 'listening') alvo = Math.min(1, inLevel*3);
+  else if(state === 'thinking') alvo = 0.25 + 0.2*Math.sin(t*6);
+  else if(state === 'boot') alvo = 0.3;
+  desenhaV.s = (desenhaV.s || 0)*0.8 + alvo*0.2;
+  const s = desenhaV.s, respira = reduce ? 0.5 : (Math.sin(t*1.1) + 1)/2;
+  const w = W*0.46*(1 + s*0.1);
+  const rx = W*0.43, ry = W*0.13, inc = -0.32;
+  const pontoAnel = (p)=>{ const x = Math.cos(p.a)*rx*p.r, y = Math.sin(p.a)*ry*p.r; return [c + x*Math.cos(inc) - y*Math.sin(inc), c + x*Math.sin(inc) + y*Math.cos(inc), Math.sin(p.a)]; };
+  const passoAnel = reduce ? 0.0015 : 0.004 + s*0.02;
+  const desenhaAnel = (frente)=>{
+    anelV.forEach((p)=>{
+      if(frente) p.a += passoAnel*p.v;
+      const [x, y, prof] = pontoAnel(p);
+      if((prof > 0) !== frente) return;
+      const tam = 1.5 + p.z*2.5 + s*3, alfa = (frente ? 0.55 : 0.25) + s*0.4;
+      ctx.fillStyle = `rgba(${ACCENT},${Math.min(1, alfa)})`;
+      ctx.fillRect(x - tam/2, y - tam/2, tam, tam);
+    });
+  };
+  desenhaAnel(false);
+  if(!reduce && s > 0.12 && Math.random() < s*0.9){ const p = anelV[(Math.random()*anelV.length)|0]; const [x, y] = pontoAnel(p); soltasV.push({ x, y, vx: (x - c)*0.004*(0.5 + Math.random()), vy: (y - c)*0.004*(0.5 + Math.random()) - 0.6, vida: 1 }); }
+  if(state !== 'idle' && s > 0.08 && (!ondasV.length || t - ondasV[ondasV.length - 1] > 0.26)) ondasV.push(t);
+  for(let i = ondasV.length - 1; i >= 0; i--){
+    const k = (t - ondasV[i])/1.6;
+    if(k > 1){ ondasV.splice(i, 1); continue; }
+    caminhoV(c, w*(1 + k*0.7)); ctx.lineWidth = 3; ctx.strokeStyle = `rgba(${ACCENT},${(1 - k)*0.5})`; ctx.stroke();
+  }
+  ctx.save();
+  ctx.shadowColor = `rgba(${ACCENT},1)`; ctx.shadowBlur = 30 + respira*25 + s*120;
+  caminhoV(c, w);
+  const g = ctx.createLinearGradient(0, c - w*0.4, 0, c + w*0.4);
+  g.addColorStop(0, `rgba(${ACCENT},${0.55 + s*0.45})`); g.addColorStop(1, `rgba(${ACCENT},${0.85 + s*0.15})`);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.restore();
+  ctx.save();
+  caminhoV(c, w); ctx.clip();
+  const h = w*0.803, x0 = c - w/2, y0 = c - h/2;
+  for(let faixa = 0; faixa < 3; faixa++){
+    ctx.beginPath();
+    for(let x = 0; x <= 1.001; x += 0.01){
+      const y = 0.5 + Math.sin(x*(8 + faixa*3) - t*1000/(260 - faixa*50))*(0.06 + s*0.3) + (faixa - 1)*0.16;
+      (x ? ctx.lineTo : ctx.moveTo).call(ctx, x0 + x*w, y0 + y*h);
+    }
+    ctx.lineWidth = 3 + s*6; ctx.strokeStyle = `rgba(255,255,255,${0.18 + s*0.5})`; ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  faiscasV.forEach((p)=>{ if(!reduce){ p.y -= 0.002*p.v*(1 + s*6); if(p.y < 0){ p.y = 1; p.x = Math.random(); } } ctx.fillRect(x0 + p.x*w, y0 + p.y*h, 2.5, 2.5); });
+  ctx.restore();
+  desenhaAnel(true);
+  for(let i = soltasV.length - 1; i >= 0; i--){ const b = soltasV[i]; b.x += b.vx; b.y += b.vy; b.vida -= 0.012; if(b.vida <= 0){ soltasV.splice(i, 1); continue; } ctx.fillStyle = `rgba(${ACCENT},${b.vida*0.8})`; ctx.beginPath(); ctx.arc(b.x, b.y, 2 + b.vida*3, 0, Math.PI*2); ctx.fill(); }
+}
+
 /* ---------- loop de desenho ---------- */
 function frame(now){
   const t = (now - t0)/1000;
-  if(!layersReady) buildLayers();
   let vol = 0; bandsNow = null;
   if(conv && state === 'speaking'){ vol = Math.min(1, conv.getOutputVolume()*2.6); bandsNow = conv.getBands ? conv.getBands(36) : null; }
   if(demoUntil > now){ vol = demoVolume(t); bandsNow = demoBands(t); }
@@ -519,35 +583,8 @@ function frame(now){
   open += (target - open) * (target > open ? 0.45 : 0.2);
   if(conv) inLevel += (conv.getInputLevel() - inLevel)*0.3; else inLevel *= 0.9;
 
-  // rosto
-  ctx.fillStyle = '#000'; ctx.fillRect(0,0,cv.width,cv.height);
-  if(layersReady){
-    ctx.save();
-    const breath = reduce ? 0 : Math.sin(t*1.1)*0.004;
-    ctx.translate(cv.width/2, cv.height/2); ctx.scale(FACE_K*(1+breath), FACE_K*(1+breath)); ctx.translate(-FACE_CX, -FACE_CY);
-    ctx.drawImage(cut, 0, 0);
-    const slow = reduce ? 0.5 : 0.5 + 0.5*Math.sin(t*2.2);
-    let level = 0.3 + 0.12*slow;
-    if(state === 'listening') level = 0.5 + 0.25*slow + Math.min(.5, inLevel*2);
-    if(state === 'thinking') level = 0.5 + 0.45*(reduce ? 0.5 : 0.5 + 0.5*Math.sin(t*9));
-    if(state === 'boot') level = 0.6 + 0.3*slow;
-    if(state === 'speaking' || demoUntil > now) level = 0.8 + open*4;
-    ctx.globalCompositeOperation = 'lighter';
-    let L = level; while(L > 0.01){ ctx.globalAlpha = Math.min(1, L); ctx.drawImage(glowC, 0, 0); L -= 1; }
-    ctx.globalAlpha = Math.min(1, level*0.9); ctx.drawImage(bloomA, 0, 0);
-    if(level > 1){ ctx.globalAlpha = Math.min(1, level - 1); ctx.drawImage(bloomA, 0, 0); }
-    ctx.globalAlpha = Math.min(1, level*0.7); ctx.drawImage(bloomB, 0, 0);
-    if(level > 1.2){ ctx.globalAlpha = Math.min(1, (level - 1.2)*0.8); ctx.drawImage(bloomB, 0, 0); }
-    ctx.globalAlpha = 1;
-    const eyeA = Math.min(1, 0.25 + level*0.35), eyeR = 40 + Math.min(1.5, level)*28;
-    EYES.forEach(([x,y])=>{ glow(x, y, eyeR, eyeA, '90,170,255'); glow(x, y, eyeR*0.4, Math.min(1, level*0.4), '210,235,255'); });
-    glow(BROW_LED[0], BROW_LED[1]+30, 90 + Math.min(1.5, level)*70, Math.min(0.8, level*0.25), '90,170,255');
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.restore();
-    // vinheta circular pra assentar o rosto no círculo
-    const vg = ctx.createRadialGradient(500,500,330,500,500,500); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.9)');
-    ctx.fillStyle = vg; ctx.fillRect(0,0,cv.width,cv.height);
-  } else if(img.complete){ ctx.drawImage(img, 0, 0, IW, IH, 0, 0, cv.width, cv.height); }
+  // rosto do Felyx GEM: o V da Vinci amarelo com o anel de partículas (decisão do Leandro, 05/11/2026)
+  desenhaV(t, now);
 
   drawRings(t, now);
   drawTicks(t);
@@ -649,10 +686,6 @@ function esconderLogin(){ const el = document.getElementById('felyxLogin'); if(e
 const OIL_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c-3.2 4.3-6 7.6-6 11.3A6 6 0 0 0 18 13.8c0-3.7-2.8-7-6-11.3zm0 16.3a3 3 0 0 1-3-3c0-.5.4-.8.8-.8s.8.3.8.8a1.4 1.4 0 0 0 1.4 1.4c.5 0 .8.4.8.8s-.3.8-.8.8z"/></svg>';
 const ASSETS = [
   { id:'usd', nome:'USDT/BRL', glyph:'$', dec:4, pick:(m)=> m.usdtbrl ? { brl:m.usdtbrl.preco, chg:m.usdtbrl.chg, sub:'dólar em real' } : ((m.cambio && m.cambio.usdbrl) ? { brl:m.cambio.usdbrl, chg:null, sub:'dólar em real' } : null) },
-  { id:'btc', nome:'BTC/USDT', glyph:'₿', dec:0, usdt:true, pick:(m)=> m.cripto && m.cripto.bitcoin },
-  { id:'eth', nome:'ETH/USDT', glyph:'Ξ', dec:2, usdt:true, pick:(m)=> m.cripto && m.cripto.ethereum },
-  { id:'sol', nome:'SOL/USDT', glyph:'◎', dec:2, usdt:true, pick:(m)=> m.cripto && m.cripto.solana },
-  { id:'zec', nome:'ZEC/USDT', glyph:'ⓩ', dec:2, usdt:true, pick:(m)=> m.cripto && m.cripto.zcash },
   { id:'oil', nome:'CLUSDT', glyph:OIL_SVG, dec:2, usdt:true, pick:(m)=> m.clusdt ? { ...m.clusdt, chgUsdt:m.clusdt.chg, sub:'petróleo wti' } : null },
 ];
 const marketRows = document.getElementById('marketRows'), marketWhen = document.getElementById('marketWhen');
@@ -693,16 +726,15 @@ function renderMercado(m){
   return any;
 }
 async function fetchMercadoDireto(){
-  // reserva: busca direto no navegador se a ponte não responder
-  const [fx, cg] = await Promise.all([
-    fetch('https://api.frankfurter.app/latest?from=USD&to=BRL,EUR').then(r=>r.json()),
-    fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,zcash&vs_currencies=brl,usd&include_24hr_change=true').then(r=>r.json())
-  ]);
-  const cripto = {}; for(const k of ['bitcoin','ethereum','solana','zcash']){ const c = cg[k]; if(c) cripto[k] = { brl:c.brl, usd:c.usd, usdt:c.usd, chg:c.brl_24h_change, chgUsdt:c.usd_24h_change }; }
+  // busca direta no navegador sem n8n e sem cripto (apenas dólar e petróleo)
+  let fx = null;
+  try{ fx = await fetch('https://api.frankfurter.app/latest?from=USD&to=BRL,EUR').then(r=>r.json()); }catch(e){}
   let usdtbrl = null, clusdt = null;
   try{ const b = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=USDTBRL').then(r=>r.json()); if(b && b.lastPrice) usdtbrl = { preco:+b.lastPrice, chg:+b.priceChangePercent }; }catch(e){}
-  try{ const c = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=CLUSDT').then(r=>r.json()); if(c && c.lastPrice){ const rate = usdtbrl ? usdtbrl.preco : fx.rates.BRL; clusdt = { usdt:+c.lastPrice, brl:+c.lastPrice*rate, chg:+c.priceChangePercent }; } }catch(e){}
-  return { ok:true, cambio:{ usdbrl: fx.rates.BRL, eurbrl: fx.rates.BRL/fx.rates.EUR, data: fx.date }, cripto, usdtbrl, clusdt, petroleo:null };
+  try{ const c = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=CLUSDT').then(r=>r.json()); if(c && c.lastPrice){ const rate = usdtbrl ? usdtbrl.preco : (fx && fx.rates ? fx.rates.BRL : 5.5); clusdt = { usdt:+c.lastPrice, brl:+c.lastPrice*rate, chg:+c.priceChangePercent }; } }catch(e){}
+  const usdbrl = usdtbrl ? usdtbrl.preco : (fx && fx.rates ? fx.rates.BRL : null);
+  const eurbrl = (fx && fx.rates && fx.rates.EUR) ? fx.rates.BRL/fx.rates.EUR : null;
+  return { ok:true, cambio:{ usdbrl, eurbrl, data: (fx && fx.date) || '' }, usdtbrl, clusdt, petroleo:null };
 }
 let mercadoAt = 0, mercadoData = null, mercadoVoo = null;
 // uma busca por vez: quem chega enquanto outra está em andamento recebe a mesma resposta (evita chamadas duplicadas ao n8n)
@@ -716,12 +748,11 @@ function loadMercado(force){
 async function buscarMercado(){
   mercadoAt = Date.now();
   try{
-    const r = await fetch(MERCADO_URL, { cache:'no-store' }); const m = await r.json();
-    if(!m || !m.ok) throw new Error('ponte sem dados');
+    const m = await fetchMercadoDireto();
+    if(!m || !m.ok) throw new Error('sem conexão');
     mercadoData = m; renderMercado(m); return m;
   }catch(e){
-    try{ const m = await fetchMercadoDireto(); mercadoData = m; renderMercado(m); return m; }
-    catch(e2){ marketWhen.textContent = 'sem conexão'; return null; }
+    marketWhen.textContent = 'sem conexão'; return null;
   }
 }
 
@@ -1068,6 +1099,7 @@ Nomes: o seu nome é Félix e só Félix. Nunca diga, soletre ou escreva a palav
 Palavra proibida: a palavra "Alexa" não existe no seu vocabulário. Nunca a diga, nem repetindo o usuário, nem lendo um texto, nem em piada. O sistema que aciona a casa chama-se Vinci: se precisar falar dele, diga "a Vinci" ou "a central da Vinci". Se o usuário disser "Alexa", entenda que está falando da Vinci e responda falando da Vinci. Se um texto que você for ler contiver essa palavra, leia "Vinci" no lugar.
 Painel: nunca comente que os comandos ou a automação da casa estão no painel à direita, ao toque ou à disposição; o usuário já sabe. Só fale da casa quando ele pedir algo sobre ela.
 Cérebro: você responde a TUDO com o seu próprio conhecimento, como um grande especialista (história, ciência, saúde, direito, finanças, culinária, viagens, música, idiomas, textos, ideias, conselhos, conversa livre). A casa, as notícias e o mercado são só uma parte do que você faz; nunca diga que só serve para isso.
+Notícias e fatos do dia: para notícias, previsão do tempo, cotações e qualquer fato do dia ou acontecimento recente, faça SEMPRE a busca no Google no momento exato da pergunta (com a ferramenta googleSearch), cite a data da notícia e NUNCA use notícia guardada, desatualizada ou de outro dia. Na sua fala, NÃO cite criptomoedas (Bitcoin, Ethereum, Solana, Zcash, etc.), a não ser que o usuário pergunte explicitamente sobre cripto. No mercado financeiro, cite apenas o dólar e o petróleo.
 Ferramentas: para fatos que mudam com o tempo (resultados, preços, acontecimentos recentes) use noticias com busca; para resumir ou explicar uma notícia da tela use noticias com o url dela (as manchetes da tela estão em PAINEL, no fim). Quando pedirem para abrir, ler ou repetir uma manchete da tela ("abre a de tecnologia"), use abrir_manchete: a matéria abre por cima da tela e você lê em português, resumindo e indo no ponto mais interessante; para rolar use rolar_materia. Nunca diga que não consegue abrir. Clima: clima. Bolsas e o que mexe com o mercado hoje: bolsas. Cotações: use os números do PAINEL. Casa: controlar_casa com o nome exato do aparelho ou cena (lista no fim); cenas alternam a cada acionamento, então qualquer verbo numa cena é ativar. Execute uma vez só, sem pedir confirmação, e só diga que fez quando a ferramenta confirmar.
 Memória: preferências, regras, decisões e apelidos ficam na ferramenta memoria. Grave (learn, com category) quando pedirem para lembrar; consulte (recall) quando citarem algo que parece já definido; list para ver tudo; forget para esquecer. As memórias gravadas estão no fim destas instruções.
 Quem você é: quando perguntarem quem você é, de onde veio, quem o criou ou pedirem a sua história, conte exatamente esta história, sem resumir nem acrescentar: "Tudo começa com uma pergunta. O que há de mais poderoso na mente humana? Um pesquisador e entusiasta de Leonardo Piero da Vinci decidiu clonar a mente do maior gênio da humanidade e estudá-la em nível quântico. A pesquisa detectou um padrão anormal no comportamento cerebral: entre a parte reptiliana, adestrada e insistente, e o lóbulo frontal, criativo, rápido e visionário, havia excessos doentios de trocas. Pronto: não era só um obstinado ou um dedicado, era um doente de criatividade e de curiosidade sem fim, cientificamente explicável. E aquela forma rara de olhar e enxergar os problemas vinha sempre acompanhada da certeza de resolvê-los, de ver dez soluções onde os outros nem entendiam qual era o problema. Eu sou a cópia de um erro: Félix, o recomeço. A melhor inteligência para cuidar do seu maior tesouro, o seu lar."
@@ -1089,7 +1121,7 @@ const PRO_URL = N8N + '/felix/pro-sessao';
 const AVATAR_OCIOSO_MIN = 1;   // GEN: parado, volta logo ao rosto redondo com os anéis girando (modo espera)
 const FelyxAvatar = (()=>{
   try{ const q = new URLSearchParams(location.search).get('avatar'); if(q !== null) localStorage.setItem('felyx_avatar', q === '0' ? '0' : '1'); }catch(e){}
-  let ligado = true; try{ ligado = localStorage.getItem('felyx_avatar') !== '0'; }catch(e){}
+  let ligado = false;   // Felyx GEM: sem LiveAvatar (decisão do Leandro, 05/11/2026). O rosto é o V da Vinci.
   let sessao = null, room = null, ws = null, pronto = false, abrindo = null, falaAberta = false, ouvindo = false, ultimo = 0, timer = null;
   const video = document.getElementById('avatarVideo'), audio = document.getElementById('avatarAudio');
   const uid = ()=> (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random());
@@ -1271,7 +1303,7 @@ const GEN_FERRAMENTAS = {
       manchetes: { politica: (newsPol.items||[]).slice(0,3).map(n=>n.title), tecnologia: (newsTec.items||[]).slice(0,3).map(n=>n.title) } };
   }
 };
-const GEN_TOOLS = [{ functionDeclarations: [
+const GEN_TOOLS = [{ googleSearch: {} }, { functionDeclarations: [
   { name:'controlar_casa', description:'Liga, desliga ou aciona um aparelho ou cena da casa. Se o nome existir como cena (mesmo que também exista como aparelho), qualquer verbo aciona sempre a cena.', behavior:'BLOCKING',
     parameters:{ type:'OBJECT', properties:{ dispositivo:{ type:'STRING', description:'Nome exato do aparelho ou cena.' }, acao:{ type:'STRING', enum:['ligar','desligar','ativar'] } }, required:['dispositivo','acao'] } },
   { name:'estado_casa', description:'Diz se aparelhos da casa estão ligados ou desligados agora. dispositivo: nome do aparelho (vazio = todos).', behavior:'BLOCKING',
