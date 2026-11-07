@@ -148,6 +148,53 @@ const stateEl = $("state"), captionEl = $("caption"), casaEl = $("casa"), video 
 let ws, audioCtx, micStream, micNode, room, avatarWs, avatar = null, keepAlive, ocioso, ultimoUso = 0;
 let casa = { cenas: [], desativaveis: [], aparelhos: [] };
 
+// --- a voz nunca fica muda (07/11/2026) ---
+// Antes a voz do Gemini ia só para o rosto; se o som do vídeo não tocasse, o Felyx ficava calado. Agora ela também toca
+// aqui e só fica muda aqui quando o som do rosto já provou, nesta sessão, que toca neste aparelho. No iPhone e no iPad a voz
+// sai sempre daqui e o rosto só mexe a boca. Se o rosto calar no meio da fala, a voz volta a sair daqui em 2 s.
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+let saidaLocal = null, fontesLocais = [], playheadLocal = 0, somDoRosto = false, somOk = false, falouEm = 0, turnoAberto = false, timerRosto = null;
+const falhasDaVoz = new Set();
+function avisarSilencioso(erro) {   // vai em silêncio para o Claude (felyx_falhas), uma vez por tipo a cada abertura
+  const k = String(erro).slice(0, 80); if (falhasDaVoz.has(k) || !SESSAO) return; falhasDaVoz.add(k);
+  fetch(N8N + "/felix/gemini-apoio", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessao: SESSAO, acao: "falha",
+    pedido: "voz do Felyx PRO (" + (IOS ? "iPhone/iPad" : "outro aparelho") + ")", erro: String(erro) + " · " + navigator.userAgent.slice(0, 140) }) }).catch(() => {});
+}
+const somDoRostoTocando = () => !!(audioEl.srcObject && !audioEl.paused && !(room && room.canPlaybackAudio === false));
+const rostoFalouDesde = (t) => falouEm >= t || avatarFalando || !!(room && [...room.remoteParticipants.values()].some((p) => p.isSpeaking));
+function decidirSaida() {   // no começo de cada fala: por onde a voz sai, e em 2 s confere se o rosto devolveu o som
+  turnoAberto = true;
+  somDoRosto = !!(avatar?.pronto && !IOS && somOk);
+  if (saidaLocal) saidaLocal.gain.value = somDoRosto ? 0 : 1;
+  audioEl.muted = !somDoRosto;
+  clearTimeout(timerRosto);
+  if (!avatar?.pronto) return;
+  const inicio = Date.now(), peloRosto = somDoRosto;
+  timerRosto = setTimeout(() => {
+    const falou = rostoFalouDesde(inicio), toca = somDoRostoTocando();
+    if (!peloRosto) { if (falou && toca && !IOS) somOk = true; return; }   // provado: a próxima fala sai sincronizada pelo rosto
+    if (!(falou && toca)) socorroLocal(falou ? "o som do rosto não toca neste aparelho" : "o rosto não devolveu a voz");
+  }, 2000);
+}
+function socorroLocal(motivo) {   // o rosto calou: a voz desta fala passa a sair daqui na hora, e as próximas também
+  somDoRosto = false; somOk = false;
+  if (saidaLocal) saidaLocal.gain.value = 1;
+  audioEl.muted = true;
+  avisarSilencioso("voz pelo rosto falhou: " + motivo);
+}
+function tocarLocal(b64) {   // PCM 16 bits 24 kHz do Gemini; com o rosto provado toca em volume zero, só para poder assumir na hora
+  if (!audioCtx) return;
+  if (audioCtx.state !== "running") audioCtx.resume().catch(() => {});
+  if (!saidaLocal) { saidaLocal = audioCtx.createGain(); saidaLocal.gain.value = somDoRosto ? 0 : 1; saidaLocal.connect(audioCtx.destination); }
+  const bin = atob(b64), n = bin.length >> 1, f = new Float32Array(n);
+  for (let i = 0; i < n; i++) { let v = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8); if (v >= 0x8000) v -= 0x10000; f[i] = v / 0x8000; }
+  const buf = audioCtx.createBuffer(1, n, 24000); buf.copyToChannel(f, 0);
+  const s = audioCtx.createBufferSource(); s.buffer = buf; s.connect(saidaLocal);
+  const t = Math.max(audioCtx.currentTime + (fontesLocais.length ? 0.02 : 0.08), playheadLocal); s.start(t); playheadLocal = t + buf.duration;
+  fontesLocais.push(s); s.onended = () => { fontesLocais = fontesLocais.filter((x) => x !== s); };
+}
+function pararLocal() { for (const s of fontesLocais) { try { s.stop(); } catch (e) {} } fontesLocais = []; if (audioCtx) playheadLocal = audioCtx.currentTime; }
+
 // --- sessão (mesmo login do Felyx Lite) ---
 let SESSAO = "";
 try { SESSAO = localStorage.getItem("felyx_lite_sessao") || ""; } catch (e) {}
@@ -231,6 +278,8 @@ function enviarBloco() {
 function falar(b64) { // cada pedaço do Gemini vai na hora: o primeiro som chega ao avatar sem esperar bloco nenhum
   ultimoUso = Date.now();
   if (segurando) { segurados.push(b64); return; }
+  if (!turnoAberto) decidirSaida();
+  tocarLocal(b64);
   if (ouvindo) { avatarSend("agent.stop_listening"); ouvindo = false; }
   avatarSend("agent.speak", { audio: b64 });
   falaAberta = true;
@@ -239,8 +288,10 @@ function fimDaFala() {
   if (segurando) { fimSegurado = true; return; }
   enviarBloco();
   if (falaAberta) { avatarSend("agent.speak_end"); falaAberta = false; }
+  turnoAberto = false;
 }
 function interromper() {
+  pararLocal(); clearTimeout(timerRosto); turnoAberto = false;
   pcmFila = []; pcmBytes = 0; clearTimeout(filaTimer); filaTimer = null;
   segurados = []; segurando = false; fimSegurado = false;
   if (falaAberta || avatarFalando) avatarSend("agent.interrupt");
@@ -272,7 +323,7 @@ function iniciarTeclado() {
     if (!digitando) { timerTeclado = null; return; }
     if (performance.now() - desde > 30000) return pararTeclado(); // a ferramenta travou: não digita para sempre
     if (segurados.length) return soltarResposta(); // a resposta chegou: fala já, sem esperar
-    if (!avatarFalando) clique(); // só digita depois que a frase de espera terminou no avatar
+    if (!avatarFalando && !fontesLocais.length) clique(); // só digita depois que a frase de espera terminou (no rosto e aqui)
     timerTeclado = setTimeout(proximo, 70 + Math.random() * (Math.random() < 0.15 ? 380 : 120));
   };
   proximo();
@@ -369,8 +420,10 @@ async function abrirAvatar() {
   room = new LK.Room({ adaptiveStream: true });
   room.on(LK.RoomEvent.TrackSubscribed, (track) => {
     if (track.kind === "video") { track.attach(video); video.onplaying = () => video.classList.add("on"); }
-    if (track.kind === "audio") { track.attach(audioEl); audioEl.play().catch(() => {}); }
+    if (track.kind === "audio") { track.attach(audioEl); audioEl.muted = !somDoRosto; audioEl.play().catch(() => {}); }   // mudo até provar que toca aqui
   });
+  // o LiveKit avisa quem está falando: é uma das provas de que o rosto devolveu a voz
+  room.on(LK.RoomEvent.ActiveSpeakersChanged, (lista) => { if ((lista || []).some((p) => p && !p.isLocal)) falouEm = Date.now(); });
   room.on(LK.RoomEvent.Disconnected, () => { if (avatar) stop("O Felyx saiu da chamada."); });
   await room.connect(j.livekit_url, j.livekit_client_token);
 
@@ -381,7 +434,7 @@ async function abrirAvatar() {
       let m; try { m = JSON.parse(e.data); } catch (x) { return; }
       if (m.type === "session.state_updated" && m.state === "connected") { avatar.pronto = true; clearTimeout(limite); ok(); }
       if (m.type === "session.state_updated" && m.state === "disconnected") stop("O Felyx saiu da chamada.");
-      if (m.type === "agent.state_updated") avatarFalando = m.new_state === "talking";
+      if (m.type === "agent.state_updated") { avatarFalando = m.new_state === "talking"; if (avatarFalando) falouEm = Date.now(); }
       if (m.type === "error") console.warn("LiveAvatar:", m);
     };
     avatarWs.onerror = () => falha(new Error("Sem conexão com o avatar."));
@@ -390,6 +443,7 @@ async function abrirAvatar() {
 }
 function fecharAvatar() {
   clearInterval(keepAlive);
+  somOk = false; somDoRosto = false; if (saidaLocal) saidaLocal.gain.value = 1;   // sem rosto, a voz sai daqui
   const a = avatar; avatar = null;
   try { avatarWs?.close(); } catch (e) {}
   try { room?.disconnect(); } catch (e) {}
@@ -408,6 +462,7 @@ async function start() {
   setState("");
   const iris = felyxIris.desbloquear(document.querySelector(".quadro"));   // o rosto conecta enquanto a íris é lida
   audioCtx = new AudioContext();
+  audioCtx.onstatechange = () => { if (audioCtx && audioCtx.state !== "running" && audioCtx.state !== "closed") audioCtx.resume().catch(() => {}); };   // o sistema suspendeu o som: retoma
   audioEl.play().catch(() => {});
   micStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
   const [tr, lista] = await Promise.all([
@@ -468,6 +523,7 @@ async function start() {
 function stop(motivo) {
   clearInterval(ocioso);
   digitando = false; segurando = false; segurados = [];
+  pararLocal(); clearTimeout(timerRosto); turnoAberto = false; saidaLocal = null;
   const w = ws; ws = null;
   try { w?.close(1000); } catch (e) {}
   micStream?.getTracks().forEach((t) => t.stop());
