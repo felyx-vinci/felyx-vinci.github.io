@@ -61,7 +61,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .face canvas{display:block;width:100%;height:100%}
 .face video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s;pointer-events:none}
 .face video.on{opacity:1}
-/* com o rosto ao vivo, o centro vira o quadro do PRO: retângulo grande, sem os anéis */
+/* com o rosto ao vivo, o centro vira o quadro do FULL: retângulo grande, sem os anéis */
 #hud.com-rosto .orbWrap{width:min(100%,960px);aspect-ratio:16/9}
 #hud.com-rosto #rings{display:none}
 #hud.com-rosto .face{width:100%;aspect-ratio:16/9;border-radius:18px;box-shadow:0 0 0 1px rgba(214,255,26,.18),0 0 50px rgba(214,255,26,.08)}
@@ -672,7 +672,7 @@ function sessaoCaiu(resp, j){ if((resp && resp.status === 401) || (j && j.reloga
     if(!tel || !senha){ erro.textContent = 'Preencha telefone e senha.'; return; }
     entrar.disabled = true; erro.textContent = 'entrando…';
     try{
-      // mesma senha do app Felyx (Lite, PRO e apps); a senha antiga da casa continua valendo como segunda tentativa
+      // mesma senha do app Felyx (Lite, FULL, GEM e apps); a senha antiga da casa continua valendo como segunda tentativa
       let r = await fetch(N8N + '/felix/app', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ acao:'entrar', telefone: tel, senha, aparelho:'Felyx FULL' }) });
       let j = {}; try{ j = await r.json(); }catch(e){}
       if(j.erro === 'plano_gen' && j.link){ erro.textContent = j.mensagem || ''; location.href = j.link; return; }
@@ -1196,7 +1196,7 @@ const SO_O_NOME = /^\W*(ei|oi|ô|o|olá|e aí)?\W*(f[eé]l[iíy]x|felyx|f[eé]li
 // (PCM 16-bit 24 kHz) e devolvida pelo LiveKit já sincronizada com os lábios. Cada minuto aberto consome
 // créditos, então ele fecha sozinho depois de AVATAR_OCIOSO_MIN sem conversa e reabre quando chamam o Felyx.
 // Enquanto não está pronto (ou se falhar), a voz toca normal aqui. Desligar: ?avatar=0 (fica salvo neste aparelho).
-const PRO_URL = N8N + '/felix/pro-sessao';
+const SESSAO_URL = N8N + '/felix/pro-sessao';   // nome antigo do endereço no n8n; serve ao Full e ao Gem
 const AVATAR_OCIOSO_MIN = 3;
 // Regra do Leandro (07/11): no rosto, a sincronia do lábio com a voz é o produto. A voz sai pelo vídeo do LiveAvatar desde a
 // primeira fala, em qualquer aparelho. Plano B, só se o rosto não devolver a voz em 2,5 s: o rosto fecha (nada de boca fora de
@@ -1243,7 +1243,7 @@ const FelyxAvatar = (()=>{
   async function abrir(){
     if(!ligado || pronto || abrindo || !SESSAO || Date.now() < bloqueadoAte) return abrindo;
     abrindo = (async ()=>{
-      const r = await fetch(PRO_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sessao: SESSAO }) });
+      const r = await fetch(SESSAO_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sessao: SESSAO }) });
       const j = await r.json().catch(()=>({}));
       if(!j.ok || !j.livekit_url || !j.ws_url) throw new Error('avatar indisponível');
       sessao = { id: j.session_id, token: j.session_token };
