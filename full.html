@@ -944,7 +944,7 @@ document.getElementById('edClear').addEventListener('click', ()=>{ if(editing < 
 document.getElementById('edCancel').addEventListener('click', closeEditor);
 document.getElementById('edReset').addEventListener('click', ()=>{ if(confirm('Voltar os 32 botões ao padrão?')){ tiles = DEFAULT_TILES.map(t=>({ ...t })); tileOn = {}; saveOn(); saveTiles(); renderMatrix(); closeEditor(); } });
 edPhrase.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') document.getElementById('edSave').click(); });
-const FAIL_RX = /não consegui|não foi poss|falhou|\berro\b|indispon|não encontrei|não achei/i;
+const FAIL_RX = /não concluída|não consegui|não foi poss|falhou|\berro\b|indispon|não encontrei|não achei/i;
 // Cena: só envia o comando e encerra. Pulso amarelo de 600 ms (300 ms com redução de movimento), bipe de 60 ms
 // e aviso "Comando enviado" para leitor de tela. Sem estado depois do pulso; a falha continua aparecendo
 // como antes (botão "fail", chip "falhou" e card). Aparelhos com ligar/desligar (f2) seguem como estavam.
@@ -971,8 +971,9 @@ async function runCena(i, btn, t){
   pulsarCena(btn);
   let texto = '';
   try{
-    const r = await fetch(PERGUNTA_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pergunta: t.f, sessionId: SESSION_ID, origem:'hud-toque', sessao: SESSAO }) });
-    const j = await r.json(); texto = sessaoCaiu(r, j) ? '' : String(j.text || '').replace(/\balexa\b/gi, 'Vinci');
+    const r = await fetch(N8N + '/felix/app', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ acao:'comando', token: SESSAO, texto: t.f }) });
+    const j = await r.json(); const perdeu=sessaoCaiu(r, j);
+    texto = !perdeu && j.ok ? String(j.text || 'Pronto, feito.').replace(/\balexa\b/gi, 'Vinci') : '';
   }catch(e){ texto = ''; }
   const ok = !!texto && !FAIL_RX.test(texto);
   if(ok) return;
