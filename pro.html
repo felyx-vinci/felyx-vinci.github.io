@@ -34,6 +34,18 @@
   #login button { padding: 14px; border-radius: 10px; border: 0; background: var(--vinci); color: #111; font-size: 16px; font-weight: 600; cursor: pointer; }
   #login .link { background: none; color: var(--muted); font-weight: 400; padding: 6px; }
   #loginErro { min-height: 1.3em; font-size: 14px; color: #ff8a7a; text-align: center; }
+  .proTabs{position:fixed;z-index:30;left:0;right:0;bottom:0;padding:8px max(12px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));display:flex;justify-content:center;gap:8px;background:linear-gradient(transparent,rgba(5,5,5,.96) 35%)}
+  .proTabs button,.roomTabs button{border:1px solid rgba(214,255,26,.22);border-radius:999px;background:#101208;color:#9ba77a;padding:9px 15px;font-size:12px;cursor:pointer}
+  .proTabs button[aria-selected="true"],.roomTabs button[aria-selected="true"]{background:var(--vinci);color:#111}
+  body{padding-bottom:56px} main{padding-bottom:60px}.roomTabs{display:flex;gap:8px;overflow-x:auto;width:min(96vw,960px);padding:4px 2px 12px;scrollbar-width:none}.roomTabs button{white-space:nowrap;flex:none}
+  #scenePanel{display:none;position:fixed;z-index:20;inset:0 0 54px;background:#050505;color:var(--text);padding:max(18px,env(safe-area-inset-top)) 16px 14px;overflow:auto}
+  #scenePanel[data-on="1"]{display:block}#scenePanel h2{color:var(--vinci);font-size:18px;font-weight:500;margin:8px 0 14px}
+  #sceneTiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px;max-width:960px;margin:auto}
+  .sceneTile{position:relative;min-height:76px;border-radius:13px;border:1px solid rgba(214,255,26,.36);background:transparent;color:var(--text);padding:10px;font-size:14px;cursor:pointer;transition:background .1s,box-shadow .1s}
+  .sceneTile.pulse{animation:proPulse .62s ease-in-out both}@keyframes proPulse{0%,100%{background:transparent;box-shadow:none}20%,60%{background:rgba(214,255,26,.42);color:#111;box-shadow:0 0 18px rgba(214,255,26,.28)}40%,80%{background:transparent;box-shadow:none}}
+  .sceneTile .result{display:none;position:absolute;left:6px;right:6px;bottom:4px;color:#ffaaa4;font-size:11px}.sceneTile[data-fail="1"]{padding-bottom:25px}.sceneTile[data-fail="1"] .result{display:block}
+  #sceneSummary{min-height:1.3em;text-align:center;color:#ffaaa4;font-size:13px;margin:10px auto}
+  #upgradePanel{display:none;position:fixed;z-index:20;inset:0 0 54px;background:#050505;color:var(--text);padding:35px 20px;text-align:center}#upgradePanel[data-on="1"]{display:block}#upgradePanel a{display:block;color:var(--vinci);margin:22px}
 </style>
 </head>
 <body>
@@ -56,6 +68,9 @@
     <div id="loginErro"></div>
   </form>
 </div>
+<section id="scenePanel" aria-label="Salas da casa"><h2>Salas da casa</h2><nav class="roomTabs" id="roomTabs" aria-label="Cômodos"></nav><div id="sceneSummary" aria-live="polite"></div><div id="sceneTiles"></div></section>
+<section id="upgradePanel"><h2>Vinci Automação</h2><a href="https://www.instagram.com/vinciautomacao/" target="_blank" rel="noopener">Instagram da Vinci Automação</a><a href="https://www.vinciautomacao.com/felyx.html#plano-pro" target="_blank" rel="noopener">Peça seu upgrade</a></section>
+<nav class="proTabs" aria-label="Navegação principal"><button type="button" data-view="home" aria-selected="true">Home</button><button type="button" data-view="dashboard" aria-selected="false">Dashboard</button><button type="button" data-view="rooms" aria-selected="false">Salas</button><button type="button" data-view="vinci" aria-selected="false">Vinci</button></nav>
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.9.0/dist/livekit-client.umd.js"></script>
 <script src="esqueci-senha.js"></script>
 <script src="cumprimento.js"></script>
@@ -379,10 +394,10 @@ function textoComando(nome, acao) {
   if (!cena) return `${acao === "desligar" ? "desligar" : "ligar"} ${nome}`;
   return `${acao === "desligar" && casa.desativaveis.includes(nome) ? "desativar" : "ativar"} cena ${nome}`;
 }
-async function controlarCasa({ dispositivo, acao }) {
-  casaEl.textContent = `${acao} → ${dispositivo}…`;
+async function controlarCasa({ dispositivo, acao, feedbackCena = false }) {
+  if (!feedbackCena) casaEl.textContent = `${acao} → ${dispositivo}…`;
   const j = await app({ acao: "comando", token: SESSAO, texto: textoComando(dispositivo, acao) });
-  casaEl.textContent = j.ok ? `✓ ${j.text || dispositivo}` : `✗ ${j.text || j.mensagem || "a casa não confirmou"}`;
+  if (!feedbackCena) casaEl.textContent = j.ok ? `✓ ${j.text || dispositivo}` : `✗ ${j.text || j.mensagem || "a casa não confirmou"}`;
   return { ok: !!j.ok, resposta: j.text || j.mensagem || "" };
 }
 async function buscarInformacao({ tema }) {
@@ -575,6 +590,16 @@ function stop(motivo) {
 $("comecar").addEventListener("click", () => { felyxIris.preparar(); start().catch((err) => { stop(err.message); if (!SESSAO) mostrarLogin(err.message); }); });
 $("encerrar").addEventListener("click", () => stop("Até logo."));
 addEventListener("pagehide", () => { if (avatar) fecharAvatar(); });
+
+// Navegação e atalhos de cenas: o sucesso é efêmero; apenas falhas deixam aviso na própria cena.
+const scenePanel = document.getElementById("scenePanel"), sceneTiles = document.getElementById("sceneTiles"), roomTabs = document.getElementById("roomTabs");
+let selectedRoom = "", roomMap = { comodos: [], fixos: {}, semComodo: "Outros" };
+function normRoomName(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
+function sceneRoom(name){const fixed=roomMap.fixos||{};if(fixed[name+"|CENA"]||fixed[name])return fixed[name+"|CENA"]||fixed[name];const n=normRoomName(name);for(const r of roomMap.comodos||[])if((r.palavras||[]).some(p=>{const q=normRoomName(p);return q.length<=3?n.split(/[^a-z0-9]+/).includes(q):n.includes(q)}))return r.nome;return roomMap.semComodo||"Outros"}
+function beepScene(){try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.type="square";o.frequency.value=740;g.gain.value=.018;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.055);o.onended=()=>c.close()}catch(e){}}
+function renderSceneRooms(){const names=[...new Set([...(roomMap.ordemTela||[]),...(roomMap.comodos||[]).map(x=>x.nome),roomMap.semComodo||"Outros"])].filter(n=>casa.cenas.some(x=>sceneRoom(x)===n));if(!names.length&&casa.cenas.length)names.push("Outros");if(!names.includes(selectedRoom))selectedRoom=names[0]||"";roomTabs.replaceChildren(...names.map(n=>{const b=document.createElement("button");b.type="button";b.textContent=n;b.setAttribute("aria-selected",n===selectedRoom?"true":"false");b.onclick=()=>{selectedRoom=n;renderSceneRooms()};return b}));sceneTiles.replaceChildren(...casa.cenas.filter(n=>sceneRoom(n)===selectedRoom).map(name=>{const b=document.createElement("button");b.type="button";b.className="sceneTile";b.textContent=name;const result=document.createElement("span");result.className="result";result.setAttribute("aria-live","polite");b.append(result);b.onclick=async()=>{b.dataset.fail="0";result.textContent="";b.classList.remove("pulse");void b.offsetWidth;b.classList.add("pulse");beepScene();try{const out=await controlarCasa({dispositivo:name,acao:"ativar",feedbackCena:true});if(!out.ok)throw new Error(out.resposta||"Não concluída")}catch(e){b.dataset.fail="1";result.textContent="Não concluída"}};return b}))}
+fetch("vinci/comodos.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{if(j)roomMap=j;renderSceneRooms()}).catch(()=>renderSceneRooms());
+document.querySelectorAll(".proTabs button").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".proTabs button").forEach(b=>b.setAttribute("aria-selected",b===btn?"true":"false"));const view=btn.dataset.view;scenePanel.dataset.on=view==="rooms"?"1":"0";document.getElementById("upgradePanel").dataset.on=view==="vinci"?"1":"0";const dashboard=view==="dashboard";document.querySelector("main").style.visibility=(view==="rooms"||view==="vinci")?"hidden":"visible";document.getElementById("video").closest(".quadro").style.visibility=view==="home"?"visible":"";document.getElementById("comecar").style.visibility=view==="home"?"hidden":"visible";document.getElementById("state").style.display=dashboard?"":"none";document.getElementById("caption").style.display=dashboard?"":"none";document.getElementById("casa").style.display=dashboard?"":"none"}));
 </script>
 </body>
 </html>
