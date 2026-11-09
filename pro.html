@@ -526,6 +526,7 @@ async function start() {
   const tk = await tr.json();
   if (!tk.token) throw new Error("sem token de voz");
   if (lista && lista.ok) casa = { cenas: lista.cenas || [], desativaveis: lista.desativaveis || [], aparelhos: (lista.aparelhos || []).map((a) => a.nome) };
+  renderSceneRooms();
   casaEl.textContent = lista && lista.ponte && lista.ponte.online ? "casa conectada" : "casa offline";
 
   await audioCtx.audioWorklet.addModule(URL.createObjectURL(new Blob([MIC_WORKLET], { type: "text/javascript" })));
