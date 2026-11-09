@@ -114,9 +114,19 @@
   }
 
   let emCurso = null;
-  function desbloquear(alvo) {
-    if (!emCurso) emCurso = rodar(alvo).finally(() => { emCurso = null; });
+  // opcoes.semNarracao (Felyx Gem, 09/11/2026): sem fala, só o som do leitor e o texto "Desbloqueio de íris efetuado"
+  function desbloquear(alvo, opcoes) {
+    if (!emCurso) emCurso = (opcoes && opcoes.semNarracao ? rodarSemNarracao(alvo) : rodar(alvo)).finally(() => { emCurso = null; });
     return emCurso;
+  }
+  async function rodarSemNarracao(alvo) {
+    preparar();
+    const r = radar(alvo);
+    r.texto('lendo íris');
+    varredura(2.4); await espera(2450);
+    r.validar(); r.texto('desbloqueio de íris efetuado'); tanara();
+    await espera(1800);
+    await r.sair();
   }
   async function rodar(alvo) {
     preparar();
