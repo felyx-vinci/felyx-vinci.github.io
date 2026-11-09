@@ -307,8 +307,8 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .hud[data-tab="more"]>.top,.hud[data-tab="more"]>.stage,.hud[data-tab="more"]>.bottom{display:none}
 .hud[data-tab="more"]>.moreView{display:flex}
 @media(max-width:700px){.appTabs button{font-size:.58rem;letter-spacing:.07em}.roombar{padding-left:8px;padding-right:8px}}
-/* ===== 09/11/2026 (Leandro): abas em cima, microfone fixo no mesmo lugar em todas as abas, aba Felyx com o rosto em tela cheia ===== */
-#hud>.appTabs{position:fixed;top:0;left:0;right:0;z-index:40;border-top:0;border-bottom:1px solid rgba(255,255,255,.1);padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 8px max(8px,env(safe-area-inset-left))}
+/* ===== 09/11/2026 (Leandro): abas em cima (Home, Dashboard, Salas), microfone fixo no mesmo lugar em todas as abas, aba Felyx com o rosto em tela cheia ===== */
+#hud>.appTabs{grid-template-columns:repeat(3,minmax(0,1fr));position:fixed;top:0;left:0;right:0;z-index:40;border-top:0;border-bottom:1px solid rgba(255,255,255,.1);padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 8px max(8px,env(safe-area-inset-left))}
 #hud{padding-top:calc(66px + env(safe-area-inset-top));padding-bottom:calc(100px + env(safe-area-inset-bottom))}
 #hud>.mic{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:40;width:64px;height:64px;background:rgba(6,7,10,.7)}
 #hud>.mic:hover{background:rgba(var(--accent-rgb),.18)}
@@ -317,7 +317,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 #hud>.mic svg{width:26px;height:26px}
 .hud[data-tab="home"],.hud[data-tab="rooms"],.hud[data-tab="more"]{padding-top:calc(66px + env(safe-area-inset-top))}
 .hud[data-tab="home"]{height:100vh;height:100dvh;min-height:0;overflow:hidden;padding-left:0;padding-right:0}
-.hud[data-tab="home"]>.stage{height:100%}
+.hud[data-tab="home"]>.stage{height:100%;grid-template-areas:"center";grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr)}
 .hud[data-tab="home"] .center{height:100%;min-height:0;display:grid;place-items:center}
 .hud[data-tab="home"] .orbWrap{width:min(100vw,calc(100vh - 166px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));width:min(100vw,calc(100dvh - 166px - env(safe-area-inset-top) - env(safe-area-inset-bottom)))}
 .hud[data-tab="home"] #rings{display:block}
@@ -394,10 +394,9 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;background:rad
     <div class="status" id="statusText" role="status" aria-live="polite"></div>
   </footer>
   <nav class="appTabs" role="tablist" aria-label="Navegação principal">
-    <button type="button" role="tab" data-tab-target="home" aria-selected="true">Felyx</button>
-    <button type="button" role="tab" data-tab-target="rooms" aria-selected="false">Salas</button>
+    <button type="button" role="tab" data-tab-target="home" aria-selected="true">Home</button>
     <button type="button" role="tab" data-tab-target="dashboard" aria-selected="false">Dashboard</button>
-    <button type="button" role="tab" data-tab-target="more" aria-selected="false">Vinci</button>
+    <button type="button" role="tab" data-tab-target="rooms" aria-selected="false">Salas</button>
   </nav>
     <button class="mic" id="talk" data-on="0" aria-label="Falar" title="Falar">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 0 0-8 0v5a4 4 0 0 0 4 4zm6-4a1 1 0 1 1 2 0 8 8 0 0 1-7 7.93V21h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-2.07A8 8 0 0 1 4 11a1 1 0 1 1 2 0 6 6 0 0 0 12 0z"/></svg>
@@ -1013,7 +1012,7 @@ function renderRoomTabs(){
   if(!order.includes(roomActive)) roomActive=order[0]||'';
   roomBar.replaceChildren(...order.map(c=>{const b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.setAttribute('aria-selected',c===roomActive?'true':'false');b.textContent=c;b.addEventListener('click',()=>{roomActive=c;try{localStorage.setItem(roomStoreKey,c);}catch(e){}renderMatrix();});return b;}));
 }
-// o app abre sempre na aba Felyx (Leandro, 09/11/2026)
+// o app abre sempre na aba Home (Leandro, 09/11/2026)
 try{localStorage.removeItem('felyx.tab');}catch(e){}document.getElementById('hud').dataset.tab='home';
 document.querySelectorAll('[data-tab-target]').forEach(b=>b.addEventListener('click',()=>{
   document.getElementById('hud').dataset.tab=b.dataset.tabTarget;
