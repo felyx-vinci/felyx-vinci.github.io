@@ -1215,7 +1215,7 @@ function carregarFraseEspera(ctx){
   if(!fraseEspera && ctx) fraseEspera = fetch('espera-rosto.m4a').then((r)=> r.arrayBuffer()).then((b)=> new Promise((ok, falha)=> ctx.decodeAudioData(b, ok, falha))).catch(()=> null);
   return fraseEspera || Promise.resolve(null);
 }
-// barulhinho de teclado (o mesmo da tela GEN do app): enquanto o Felyx "dá uma pesquisada"
+// barulhinho de teclado (o mesmo da tela GEM do app): enquanto o Felyx "dá uma pesquisada"
 function teclado(ctx, atraso){
   if(!ctx) return ()=>{};
   let ativo = true, t = null;

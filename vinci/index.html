@@ -810,7 +810,7 @@ $('#felixBtn').addEventListener('click', () => abrirFelix(true));
 document.addEventListener('pointerdown', (e) => { if ($('#felix').dataset.aberto === '1' && !e.target.closest('#felix, #felixBtn, #materia')) fecharFelix(); });
 
 /* ===================== Notícias (aba) ===================== */
-// Mesma fonte do Felyx GEN: GET /webhook/felix/noticias (política Brasil e tecnologia, com foto).
+// Mesma fonte do Felyx GEM: GET /webhook/felix/noticias (política Brasil e tecnologia, com foto).
 const NOTICIAS_URL = N8N + '/felix/noticias';
 const APOIO_URL = N8N + '/felix/gemini-apoio';
 let noticias = null, secaoN = store.get('vinci.secaoN', 'politica'), noticiasAt = 0, materiaAtual = null;
