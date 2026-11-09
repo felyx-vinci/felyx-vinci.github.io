@@ -675,6 +675,7 @@ function sessaoCaiu(resp, j){ if((resp && resp.status === 401) || (j && j.reloga
       // mesma senha do app Felyx (Lite, PRO e apps); a senha antiga da casa continua valendo como segunda tentativa
       let r = await fetch(N8N + '/felix/app', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ acao:'entrar', telefone: tel, senha, aparelho:'Felyx FULL' }) });
       let j = {}; try{ j = await r.json(); }catch(e){}
+      if(j.erro === 'plano_gen' && j.link){ erro.textContent = j.mensagem || ''; location.href = j.link; return; }
       if(!(r.ok && j.ok && j.token)){
         r = await fetch(LOGIN_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone: tel, senha }) });
         j = {}; try{ j = await r.json(); }catch(e){}
