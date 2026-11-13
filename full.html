@@ -650,7 +650,6 @@ const NOTICIAS_URL = N8N + '/felix/noticias';
 const SESSION_ID = 'hud-' + Math.random().toString(36).slice(2, 8);
 
 /* ===================== acesso (login) ===================== */
-const LOGIN_URL = N8N + '/felix/login';
 let SESSAO = '';
 try{ SESSAO = localStorage.getItem('felyx_sessao') || ''; }catch(e){}
 function salvarSessao(t){ SESSAO = t || ''; try{ if(t) localStorage.setItem('felyx_sessao', t); else localStorage.removeItem('felyx_sessao'); }catch(e){} }
@@ -673,14 +672,10 @@ function sessaoCaiu(resp, j){ if((resp && resp.status === 401) || (j && j.reloga
     if(!tel || !senha){ erro.textContent = 'Preencha telefone e senha.'; return; }
     entrar.disabled = true; erro.textContent = 'entrando…';
     try{
-      // mesma senha do app Felyx (Lite, FULL, GEM e apps); a senha antiga da casa continua valendo como segunda tentativa
+      // mesma senha do app Felyx (Lite, FULL, GEM e apps). O login antigo com a senha da casa (felix/login) foi retirado.
       let r = await fetch(N8N + '/felix/app', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ acao:'entrar', telefone: tel, senha, aparelho:'Felyx FULL' }) });
       let j = {}; try{ j = await r.json(); }catch(e){}
       if(j.erro === 'plano_gen' && j.link){ erro.textContent = j.mensagem || ''; location.href = j.link; return; }
-      if(!(r.ok && j.ok && j.token)){
-        r = await fetch(LOGIN_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone: tel, senha }) });
-        j = {}; try{ j = await r.json(); }catch(e){}
-      }
       if(r.ok && j.ok && j.token){ salvarSessao(j.token); erro.textContent = ''; esconderLogin(); primeAudio(); if(!conv) start(); }
       else { erro.textContent = 'Telefone ou senha não conferem, ou você não está autorizado.'; }
     }catch(e){ erro.textContent = 'Não consegui conectar. Tente de novo.'; }
